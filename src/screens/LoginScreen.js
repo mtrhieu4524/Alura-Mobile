@@ -1,32 +1,61 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, Dimensions, Alert } from 'react-native';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { AuthContext } from '../AuthContext';
+import { useAuth } from '../context/AuthContext';
+import { colors } from '../constants';
 
 const { width, height } = Dimensions.get('window');
-
-// User cứng
-const MOCK_USER = {
-  email: 'user@gmail.com',
-  password: 'user123',
-};
 
 export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
-  const { login } = useContext(AuthContext);
+  const { login, getRememberedCredentials } = useAuth();
 
-  const handleSignIn = () => {
-    if (email === MOCK_USER.email && password === MOCK_USER.password) {
-      login();
-      navigation.replace('Main');
-    } else {
-      Alert.alert('Đăng nhập thất bại', 'Email hoặc mật khẩu không đúng!');
+  // Load remembered credentials on component mount
+  // useEffect(() => {
+  //   loadRememberedCredentials();
+  // }, []);
+
+  // const loadRememberedCredentials = async () => {
+  //   try {
+  //     const credentials = await getRememberedCredentials();
+  //     if (credentials) {
+  //       setEmail(credentials.email);
+  //       setPassword(credentials.password);
+  //       // setRememberMe(true);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error loading remembered credentials:', error);
+  //   }
+  // };
+
+  const handleSignIn = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please enter both email and password!');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await login(email.trim(), password);
+      
+      if (result.success) {
+        navigation.replace('MainTabs');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleGuestLogin = () => navigation.replace('MainTabs');
 
   return (
     <View style={styles.container}>
@@ -53,9 +82,10 @@ export default function LoginScreen() {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={!loading}
           />
         </View>
-        
+
         {/* Password */}
         <View style={styles.inputWrapper}>
           <Ionicons name="lock-closed-outline" size={20} color="#888" style={styles.inputIcon} />
@@ -66,43 +96,73 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
+            editable={!loading}
           />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} disabled={loading}>
             <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#888" />
           </TouchableOpacity>
         </View>
-        
-        {/* Quên mật khẩu */}
-        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={{ alignSelf: 'flex-end', marginBottom: 18 }}>
-          <Text style={styles.forgotText}>Forgot password?</Text>
-        </TouchableOpacity>
-        
+
+        {/* Remember Me */}
+        <View style={styles.rememberForgotRow}>
+          <TouchableOpacity 
+            style={styles.rememberContainer}
+            onPress={() => setRememberMe(!rememberMe)}
+            disabled={loading}
+          >
+            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+              {rememberMe && <Ionicons name="checkmark" size={12} color="#fff" />}
+            </View>
+            <Text style={styles.rememberText}>Remember me</Text>
+          </TouchableOpacity>
+          
+          {/* Quên mật khẩu */}
+          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} disabled={loading}>
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Nút đăng nhập */}
-        <TouchableOpacity style={styles.signInBtn} onPress={handleSignIn}>
-          <Text style={styles.signInText}>Sign In</Text>
+        <TouchableOpacity 
+          style={[styles.signInBtn, loading && styles.signInBtnDisabled]} 
+          onPress={handleSignIn}
+          disabled={loading}
+        >
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.signInText}>Signing In...</Text>
+            </View>
+          ) : (
+            <Text style={styles.signInText}>Sign In</Text>
+          )}
         </TouchableOpacity>
-        
+
         {/* OR CONTINUE WITH */}
         <Text style={styles.orText}>OR CONTINUE WITH</Text>
         <View style={styles.socialRow}>
-          <TouchableOpacity style={styles.socialBtn}>
+          <TouchableOpacity style={styles.socialBtn} disabled={loading}>
             <FontAwesome name="google" size={24} color="#EA4335" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.socialBtn}>
+          <TouchableOpacity style={styles.socialBtn} disabled={loading}>
             <FontAwesome name="facebook" size={24} color="#1877F3" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.socialBtn}>
+          <TouchableOpacity style={styles.socialBtn} disabled={loading}>
             <FontAwesome name="apple" size={24} color="#000" />
           </TouchableOpacity>
         </View>
-        
+
         {/* Đăng ký */}
         <View style={styles.signupRow}>
           <Text style={styles.signupText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+          <TouchableOpacity onPress={() => navigation.navigate('SignUp')} disabled={loading}>
             <Text style={styles.signupLink}>Sign up</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Guest Login */}
+        <TouchableOpacity style={styles.guestBtn} onPress={handleGuestLogin} disabled={loading}>
+          <Text style={styles.guestText}>Continue as Guest</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -164,20 +224,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#222',
   },
-  forgotBtn: {
-    alignSelf: 'flex-end',
-    marginBottom: 16,
+  rememberForgotRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  rememberContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderRadius: 3,
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  rememberText: {
+    color: '#666',
+    fontSize: 14,
   },
   forgotText: {
-    color: '#6C63FF',
+    color: colors.accent,
     fontSize: 14,
   },
   signInBtn: {
-    backgroundColor: '#6C63FF',
+    backgroundColor: colors.buttonPrimary,
     borderRadius: 8,
     alignItems: 'center',
     paddingVertical: 14,
     marginBottom: 16,
+  },
+  signInBtnDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.7,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   signInText: {
     color: '#fff',
@@ -211,8 +304,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   signupLink: {
-    color: '#6C63FF',
+    color: colors.accent,
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  guestBtn: {
+    marginTop: 12,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  guestText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
