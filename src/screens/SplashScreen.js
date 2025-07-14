@@ -6,7 +6,7 @@ const { width, height } = Dimensions.get('window');
 export default function SplashScreen({ navigation }) {
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigation.replace('Main');
+      navigation.replace('MainTabs');
     }, 2000);
     return () => clearTimeout(timer);
   }, [navigation]);

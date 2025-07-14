@@ -1,74 +1,221 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useCart } from '../CartContext';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { colors } from '../constants';
+import Toast from 'react-native-toast-message';
 
 export default function CartScreen() {
-  const { cart, removeFromCart, updateQuantity } = useCart();
-  const shipping = 5.0;
+  const navigation = useNavigation();
+  const { cart, removeFromCart, updateQuantity, fetchCartFromAPI, loading } = useCart();
+  const { isLoggedIn } = useAuth();
+
+  // Fetch cart from API when screen mounts (if user is logged in)
+  useEffect(() => {
+    const loadCartFromAPI = async () => {
+      if (isLoggedIn) {
+        const result = await fetchCartFromAPI();
+        if (!result.success && result.message !== 'No authentication token') {
+          Toast.show({
+            type: 'error',
+            text1: 'Lỗi',
+            text2: result.message || 'Không thể tải giỏ hàng',
+          });
+        }
+      }
+    };
+
+    loadCartFromAPI();
+  }, [isLoggedIn]);
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const total = subtotal + shipping;
+
+  // Handle quantity update with loading
+  const handleUpdateQuantity = async (itemId, newQuantity) => {
+    try {
+      await updateQuantity(itemId, newQuantity);
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+    }
+  };
+
+  // Handle remove item with loading
+  const handleRemoveItem = async (itemId) => {
+    try {
+      await removeFromCart(itemId);
+    } catch (error) {
+      console.error('Error removing item:', error);
+    }
+  };
+
+  // Handle both URL images (from API) and local assets
+  const getImageSource = (product) => {
+    console.log('getImageSource called with:', product.image);
+    
+    if (product.image) {
+      // If it's a string (URL), use { uri: ... }
+      if (typeof product.image === 'string') {
+        console.log('Using image URL:', product.image);
+        return { uri: product.image };
+      }
+      // If it's a local asset (require()), use directly
+      return product.image;
+    }
+    
+    // Fallback to a placeholder if no image
+    console.log('No image found, using placeholder');
+    return require('../../assets/product1.png'); // Default placeholder
+  };
+
+  // Handle checkout with authentication check
+  const handleCheckout = () => {
+    if (!isLoggedIn) {
+      Alert.alert(
+        'Yêu cầu đăng nhập',
+        'Bạn cần đăng nhập để tiếp tục thanh toán',
+        [
+          {
+            text: 'Hủy',
+            style: 'cancel',
+          },
+          {
+            text: 'Đăng nhập',
+            onPress: () => navigation.navigate('Login'),
+          },
+        ]
+      );
+      return;
+    }
+    navigation.navigate('Checkout');
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Cart</Text>
+        </View>
+        
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={styles.loadingText}>Đang tải giỏ hàng...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Empty cart state
+  if (cart.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Cart</Text>
+        </View>
+        
+        <View style={styles.emptyContainer}>
+          <Ionicons name="cart-outline" size={80} color="#ccc" />
+          <Text style={styles.emptyTitle}>Giỏ hàng trống</Text>
+          <Text style={styles.emptySubtitle}>Hãy thêm sản phẩm vào giỏ hàng để tiếp tục mua sắm</Text>
+          <TouchableOpacity 
+            style={styles.continueShoppingBtn}
+            onPress={() => navigation.navigate('Shop')}
+          >
+            <Text style={styles.continueShoppingText}>Tiếp tục mua sắm</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Cart</Text>
       </View>
+      
       {/* Cart List */}
       <FlatList
         data={cart}
         keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: 16 }}
-        renderItem={({ item }) => (
-          <View style={styles.cartItem}>
-            <Image source={item.image} style={styles.itemImage} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.itemName}>{item.name}</Text>
-              {item.volume && <Text style={styles.itemVolume}>{item.volume}</Text>}
-              <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
-            </View>
-            <View style={styles.qtyBox}>
-              <TouchableOpacity onPress={() => updateQuantity(item.id, item.quantity - 1)} style={styles.qtyBtn}>
-                <Ionicons name="remove" size={18} color="#888" />
+        style={styles.listContainer}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => {
+          // Debug log for each cart item
+          console.log('Rendering cart item:', {
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            volume: item.volume,
+            image: item.image,
+            brand: item.brand
+          });
+          
+          return (
+            <View style={styles.cartItem}>
+              <Image 
+                source={getImageSource(item)} 
+                style={styles.itemImage} 
+                defaultSource={require('../../assets/product1.png')}
+                onError={(error) => {
+                  console.log('Error loading cart image for:', item.name, 'Image URL:', item.image, 'Error:', error.nativeEvent.error);
+                }}
+              />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.itemName}>{item.name || 'Sản phẩm không tên'}</Text>
+                {item.brand && item.brand !== 'Unknown Brand' && (
+                  <Text style={styles.itemBrand}>{item.brand}</Text>
+                )}
+                {item.productType && item.productType !== 'Unknown Type' && (
+                  <Text style={styles.itemType}>Type: {item.productType}</Text>
+                )}
+                {item.volume && <Text style={styles.itemVolume}>Volume: {item.volume}</Text>}
+                <Text style={styles.itemPrice}>{(item.price || 0).toLocaleString('vi-VN')} VND</Text>
+              </View>
+              <View style={styles.qtyBox}>
+                <TouchableOpacity onPress={() => handleUpdateQuantity(item.id, item.quantity - 1)} style={styles.qtyBtn}>
+                  <Ionicons name="remove" size={18} color="#888" />
+                </TouchableOpacity>
+                <Text style={styles.qtyText}>{item.quantity || 1}</Text>
+                <TouchableOpacity onPress={() => handleUpdateQuantity(item.id, item.quantity + 1)} style={styles.qtyBtn}>
+                  <Ionicons name="add" size={18} color="#888" />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity onPress={() => handleRemoveItem(item.id)} style={styles.deleteBtn}>
+                <Ionicons name="trash" size={20} color="#fff" />
               </TouchableOpacity>
-              <Text style={styles.qtyText}>{item.quantity}</Text>
-              <TouchableOpacity onPress={() => updateQuantity(item.id, item.quantity + 1)} style={styles.qtyBtn}>
-                <Ionicons name="add" size={18} color="#888" />
-              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={() => removeFromCart(item.id)} style={styles.deleteBtn}>
-              <Ionicons name="trash" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        )}
+          );
+        }}
         ListFooterComponent={
           <View style={styles.summaryBox}>
             <Text style={styles.summaryTitle}>Order Summary</Text>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal</Text>
-              <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Shipping</Text>
-              <Text style={styles.summaryValue}>${shipping.toFixed(2)}</Text>
+              <Text style={styles.summaryValue}>{subtotal.toLocaleString('vi-VN')} VND</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryTotal}>Total</Text>
-              <Text style={styles.summaryTotalValue}>${total.toFixed(2)}</Text>
+              <Text style={styles.summaryTotalValue}>{subtotal.toLocaleString('vi-VN')} VND</Text>
             </View>
           </View>
         }
       />
-      {/* Checkout Button */}
+      
+      {/* Checkout Button - Fixed at bottom */}
       <View style={styles.checkoutBar}>
-        <Text style={styles.checkoutPrice}>${total.toFixed(2)}</Text>
-        <TouchableOpacity style={styles.checkoutBtn}>
+        <Text style={styles.checkoutPrice}>{subtotal.toLocaleString('vi-VN')} VND</Text>
+        <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout}>
           <Text style={styles.checkoutText}>Proceed to Checkout</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -89,6 +236,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#222',
+  },
+  listContainer: {
+    flex: 1,
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 20, // Extra space before checkout bar
   },
   cartItem: {
     flexDirection: 'row',
@@ -115,13 +269,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#222',
   },
+  itemBrand: {
+    color: '#888',
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  itemType: {
+    color: '#888',
+    fontSize: 13,
+    marginBottom: 2,
+  },
   itemVolume: {
     color: '#888',
     fontSize: 13,
     marginBottom: 2,
   },
   itemPrice: {
-    color: '#6C63FF',
+    color: colors.accent,
     fontWeight: 'bold',
     fontSize: 15,
     marginTop: 2,
@@ -184,16 +348,22 @@ const styles = StyleSheet.create({
   summaryTotalValue: {
     fontWeight: 'bold',
     fontSize: 16,
-    color: '#6C63FF',
+    color: colors.accent,
   },
   checkoutBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
+    paddingBottom: 100, // Space for floating tab bar
     borderTopWidth: 1,
     borderTopColor: '#eee',
     backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
   checkoutPrice: {
     fontWeight: 'bold',
@@ -201,7 +371,7 @@ const styles = StyleSheet.create({
     color: '#222',
   },
   checkoutBtn: {
-    backgroundColor: '#6C63FF',
+    backgroundColor: colors.buttonPrimary,
     paddingHorizontal: 28,
     paddingVertical: 12,
     borderRadius: 8,
@@ -210,5 +380,42 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#222',
+    marginBottom: 10,
+  },
+  emptySubtitle: {
+    color: '#888',
+    fontSize: 15,
+    marginBottom: 20,
+  },
+  continueShoppingBtn: {
+    backgroundColor: colors.buttonPrimary,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  continueShoppingText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#888',
+    fontSize: 15,
+    marginTop: 10,
   },
 }); 

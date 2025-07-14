@@ -1,0 +1,67 @@
+export const typography = {
+  // Nested structure for modern usage
+  sizes: {
+    extraSmall: 10,
+    small: 12,
+    medium: 14,
+    normal: 15,
+    large: 16,
+    extraLarge: 18,
+    xxLarge: 20,
+    title: 22,
+    header: 24,
+    largeTitle: 28,
+    huge: 32,
+  },
+
+  weights: {
+    light: '300',
+    normal: '400',
+    medium: '500',
+    semiBold: '600',
+    bold: '700',
+    heavy: '800',
+    black: '900',
+  },
+
+  lineHeights: {
+    tight: 1.2,
+    normal: 1.4,
+    relaxed: 1.6,
+    loose: 1.8,
+  },
+
+  letterSpacing: {
+    tight: -0.5,
+    normal: 0,
+    wide: 0.5,
+    wider: 1,
+  },
+
+  // Legacy support (backward compatibility)
+  fontSizeSmall: 12,
+  fontSizeMedium: 14,
+  fontSizeNormal: 15,
+  fontSizeLarge: 16,
+  fontSizeXLarge: 18,
+  fontSizeXXLarge: 20,
+  fontSizeTitle: 22,
+  fontSizeHeader: 24,
+  fontSizeLargeTitle: 28,
+  fontSizeHuge: 32,
+  fontWeightLight: '300',
+  fontWeightNormal: '400',
+  fontWeightMedium: '500',
+  fontWeightSemiBold: '600',
+  fontWeightBold: '700',
+  fontWeightHeavy: '800',
+  fontWeightBlack: '900',
+  lineHeightTight: 1.2,
+  lineHeightNormal: 1.4,
+  lineHeightRelaxed: 1.6,
+  lineHeightLoose: 1.8,
+  letterSpacingTight: -0.5,
+  letterSpacingNormal: 0,
+  letterSpacingWide: 0.5,
+  letterSpacingWider: 1,
+}; 
