@@ -102,7 +102,7 @@ export default function CartScreen() {
         
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={styles.loadingText}>Đang tải giỏ hàng...</Text>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </SafeAreaView>
     );
@@ -119,13 +119,13 @@ export default function CartScreen() {
         
         <View style={styles.emptyContainer}>
           <Ionicons name="cart-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyTitle}>Giỏ hàng trống</Text>
-          <Text style={styles.emptySubtitle}>Hãy thêm sản phẩm vào giỏ hàng để tiếp tục mua sắm</Text>
+          <Text style={styles.emptyTitle}>Cart is empty</Text>
+          <Text style={styles.emptySubtitle}>Please add products to the cart to continue shopping</Text>
           <TouchableOpacity 
             style={styles.continueShoppingBtn}
             onPress={() => navigation.navigate('Shop')}
           >
-            <Text style={styles.continueShoppingText}>Tiếp tục mua sắm</Text>
+            <Text style={styles.continueShoppingText}>Continue Shopping</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

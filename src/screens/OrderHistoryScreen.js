@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { colors, typography, dimensions } from '../constants';
 import orderService from '../services/orderService';
 import Toast from 'react-native-toast-message';
+import { VNPayRetryService } from '../utils/vnpayRetry';
+import { OfflineOrderManager } from '../utils/offlineOrderManager';
 
 export default function OrderHistoryScreen() {
   const navigation = useNavigation();
@@ -14,6 +16,10 @@ export default function OrderHistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [pendingVNPayCallback, setPendingVNPayCallback] = useState(null);
+  const [retryingVNPay, setRetryingVNPay] = useState(false);
+  const [offlineOrderStats, setOfflineOrderStats] = useState(null);
+  const [processingOfflineOrders, setProcessingOfflineOrders] = useState(false);
 
   // Fetch orders from API
   const fetchOrders = async (showLoading = true) => {
@@ -23,17 +29,32 @@ export default function OrderHistoryScreen() {
         setError(null);
       }
 
+      console.log('=== FETCHING ORDERS FROM ORDERHISTORYSCREEN ===');
       const response = await orderService.getOrderHistory({
         pageIndex: 1,
         pageSize: 50,
         sortBy: 'newest'
       });
 
+      console.log('=== ORDER HISTORY SCREEN RESPONSE ===');
+      console.log('Response success:', response.success);
+      console.log('Response message:', response.message);
+      console.log('Orders count:', response.orders?.length || 0);
+
       if (response.success) {
         setOrders(response.orders);
-        console.log('Orders loaded:', response.orders.length);
+        console.log('✅ Orders loaded successfully:', response.orders.length);
+        
+        // Debug: Log order details if any
+        if (response.orders.length > 0) {
+          console.log('Sample order:', JSON.stringify(response.orders[0], null, 2));
+        } else {
+          console.log('❌ No orders found - user may not have placed any orders yet');
+          console.log('After VNPAY payment, orders should appear here automatically');
+        }
       } else {
         setError(response.message);
+        console.log('❌ Failed to fetch orders:', response.message);
         Toast.show({
           type: 'error',
           text1: 'Lỗi',
@@ -41,7 +62,7 @@ export default function OrderHistoryScreen() {
         });
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('❌ Error fetching orders:', error);
       setError('Lỗi kết nối. Vui lòng thử lại.');
       Toast.show({
         type: 'error',
@@ -49,7 +70,9 @@ export default function OrderHistoryScreen() {
         text2: 'Lỗi kết nối. Vui lòng thử lại.',
       });
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
       setRefreshing(false);
     }
   };
@@ -60,12 +83,204 @@ export default function OrderHistoryScreen() {
     fetchOrders(false);
   };
 
-  // Initial load
+  // Check for pending VNPAY callback
+  const checkPendingVNPayCallback = async () => {
+    try {
+      const hasPending = await VNPayRetryService.hasPendingCallback();
+      if (hasPending) {
+        const callbackInfo = await VNPayRetryService.getPendingCallbackInfo();
+        setPendingVNPayCallback(callbackInfo);
+        console.log('📱 Found pending VNPAY callback:', callbackInfo);
+      } else {
+        setPendingVNPayCallback(null);
+      }
+    } catch (error) {
+      console.log('Error checking pending VNPAY callback:', error);
+    }
+  };
+
+  // Retry pending VNPAY callback
+  const retryVNPayCallback = async () => {
+    if (!pendingVNPayCallback) return;
+    
+    setRetryingVNPay(true);
+    try {
+      Toast.show({
+        type: 'info',
+        text1: 'Đang thử lại...',
+        text2: 'Đang xử lý thanh toán VNPAY',
+      });
+
+      console.log('🔄 Retrying VNPAY callback from Order History...');
+      const result = await VNPayRetryService.retryPendingCallback();
+      
+      if (result.success) {
+        console.log('✅ VNPAY callback retry successful!');
+        setPendingVNPayCallback(null);
+        
+        Toast.show({
+          type: 'success',
+          text1: 'Thành công!',
+          text2: 'Đơn hàng đã được xử lý',
+        });
+
+        // Refresh orders để hiển thị đơn hàng mới
+        await fetchOrders();
+      } else {
+        console.log('❌ VNPAY callback retry failed:', result.message);
+        Toast.show({
+          type: 'error',
+          text1: 'Thất bại',
+          text2: 'Không thể kết nối đến server',
+        });
+      }
+    } catch (error) {
+      console.log('Error retrying VNPAY callback:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Lỗi',
+        text2: 'Có lỗi xảy ra khi thử lại',
+      });
+    } finally {
+      setRetryingVNPay(false);
+    }
+  };
+
+  // Clear pending VNPAY callback
+  const clearPendingCallback = async () => {
+    Alert.alert(
+      'Xóa thanh toán đang chờ',
+      'Bạn có chắc muốn xóa thông tin thanh toán đang chờ xử lý không?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            await VNPayRetryService.clearPendingCallback();
+            setPendingVNPayCallback(null);
+            Toast.show({
+              type: 'success',
+              text1: 'Đã xóa',
+              text2: 'Thông tin thanh toán đã được xóa',
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  // Check offline order stats
+  const checkOfflineOrderStats = async () => {
+    try {
+      const stats = await OfflineOrderManager.getOfflineOrderStats();
+      setOfflineOrderStats(stats);
+      console.log('📊 Offline order stats:', stats);
+    } catch (error) {
+      console.log('Error checking offline order stats:', error);
+    }
+  };
+
+  // Process offline orders
+  const processOfflineOrders = async () => {
+    if (processingOfflineOrders) return;
+    
+    setProcessingOfflineOrders(true);
+    try {
+      Toast.show({
+        type: 'info',
+        text1: 'Đang xử lý...',
+        text2: 'Đang thử tạo các đơn hàng đang chờ',
+      });
+
+      console.log('🔄 Processing offline orders from Order History...');
+      const result = await OfflineOrderManager.processOfflineOrders();
+      
+      if (result.processed > 0) {
+        console.log(`✅ ${result.processed} offline orders processed successfully!`);
+        
+        Toast.show({
+          type: 'success',
+          text1: 'Thành công!',
+          text2: `Đã xử lý ${result.processed} đơn hàng`,
+        });
+
+        // Refresh orders và stats
+        await fetchOrders();
+        await checkOfflineOrderStats();
+      } else if (result.total === 0) {
+        Toast.show({
+          type: 'info',
+          text1: 'Không có đơn hàng',
+          text2: 'Không có đơn hàng nào cần xử lý',
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Thất bại',
+          text2: 'Không thể kết nối đến server',
+        });
+      }
+    } catch (error) {
+      console.log('Error processing offline orders:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Lỗi',
+        text2: 'Có lỗi xảy ra khi xử lý đơn hàng',
+      });
+    } finally {
+      setProcessingOfflineOrders(false);
+    }
+  };
+
+  // Clear all offline orders
+  const clearOfflineOrders = async () => {
+    Alert.alert(
+      'Xóa đơn hàng offline',
+      'Bạn có chắc muốn xóa tất cả đơn hàng đang chờ xử lý không?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            await OfflineOrderManager.clearAllOfflineOrders();
+            setOfflineOrderStats(null);
+            Toast.show({
+              type: 'success',
+              text1: 'Đã xóa',
+              text2: 'Đã xóa tất cả đơn hàng offline',
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  // Fetch orders when component mounts
   useEffect(() => {
     if (isLoggedIn) {
       fetchOrders();
+      checkPendingVNPayCallback(); // Check for pending VNPAY callbacks
+      checkOfflineOrderStats(); // Check for offline orders
+    } else {
+      setLoading(false);
+      setOrders([]);
     }
   }, [isLoggedIn]);
+
+  // Auto refresh orders when screen comes into focus (after VNPAY success)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isLoggedIn) {
+        console.log('📱 OrderHistory screen focused - refreshing orders...');
+        console.log('This should show VNPAY orders created by backend callback');
+        fetchOrders(false); // Refresh without loading indicator
+        checkPendingVNPayCallback(); // Check for pending VNPAY callbacks
+        checkOfflineOrderStats(); // Check for offline orders
+      }
+    }, [isLoggedIn])
+  );
 
   // Not logged in state
   if (!isLoggedIn) {
@@ -77,7 +292,13 @@ export default function OrderHistoryScreen() {
               <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Lịch sử đơn hàng</Text>
-            <View style={{ width: 26 }} />
+            <TouchableOpacity onPress={onRefresh} disabled={refreshing}>
+              <Ionicons 
+                name="refresh" 
+                size={26} 
+                color={refreshing ? colors.textSecondary : colors.textPrimary} 
+              />
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
         <View style={styles.notLoggedInContainer}>
@@ -105,7 +326,13 @@ export default function OrderHistoryScreen() {
               <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Lịch sử đơn hàng</Text>
-            <View style={{ width: 26 }} />
+            <TouchableOpacity onPress={onRefresh} disabled={refreshing}>
+              <Ionicons 
+                name="refresh" 
+                size={26} 
+                color={refreshing ? colors.textSecondary : colors.textPrimary} 
+              />
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
         <View style={styles.loadingContainer}>
@@ -125,8 +352,14 @@ export default function OrderHistoryScreen() {
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Lịch sử đơn hàng</Text>
-            <View style={{ width: 26 }} />
+            <Text style={styles.headerTitle}>Order History</Text>
+            <TouchableOpacity onPress={onRefresh} disabled={refreshing}>
+              <Ionicons 
+                name="refresh" 
+                size={26} 
+                color={refreshing ? colors.textSecondary : colors.textPrimary} 
+              />
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
         <View style={styles.errorContainer}>
@@ -227,7 +460,7 @@ export default function OrderHistoryScreen() {
           style={styles.viewButton} 
           onPress={() => handleOrderPress(item)}
         >
-          <Text style={styles.viewButtonText}>Xem chi tiết</Text>
+          <Text style={styles.viewButtonText}>View details</Text>
         </TouchableOpacity>
         
         {(item.status === 'Pending' || item.status === 'Processing') && (
@@ -235,7 +468,7 @@ export default function OrderHistoryScreen() {
             style={styles.cancelButton} 
             onPress={() => handleCancelOrder(item)}
           >
-            <Text style={styles.cancelButtonText}>Hủy đơn</Text>
+            <Text style={styles.cancelButtonText}>Cancel order</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -249,10 +482,53 @@ export default function OrderHistoryScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Lịch sử đơn hàng</Text>
-          <View style={{ width: 26 }} />
+          <Text style={styles.headerTitle}>Order History</Text>
+          <TouchableOpacity onPress={onRefresh} disabled={refreshing}>
+            <Ionicons 
+              name="refresh" 
+              size={26} 
+              color={refreshing ? colors.textSecondary : colors.textPrimary} 
+            />
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
+      
+      {/* Offline Orders Status */}
+      {offlineOrderStats && offlineOrderStats.pending > 0 && (
+        <View style={styles.offlineOrdersContainer}>
+          <View style={styles.offlineOrdersHeader}>
+            <Ionicons name="cloud-offline-outline" size={20} color={colors.warning} />
+            <Text style={styles.offlineOrdersTitle}>
+              Đơn hàng đang chờ xử lý: {offlineOrderStats.pending}
+            </Text>
+          </View>
+          <Text style={styles.offlineOrdersSubtitle}>
+            Một số đơn hàng VNPAY chưa được tạo do mất kết nối
+          </Text>
+          <View style={styles.offlineOrdersActions}>
+            <TouchableOpacity 
+              style={[styles.processButton, processingOfflineOrders && styles.disabledButton]}
+              onPress={processOfflineOrders}
+              disabled={processingOfflineOrders}
+            >
+              <Ionicons 
+                name={processingOfflineOrders ? "refresh" : "cloud-upload-outline"} 
+                size={16} 
+                color={colors.white} 
+              />
+              <Text style={styles.processButtonText}>
+                {processingOfflineOrders ? 'Đang xử lý...' : 'Thử lại'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.clearButton}
+              onPress={clearOfflineOrders}
+            >
+              <Text style={styles.clearButtonText}>Xóa</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       
       {orders.length > 0 ? (
         <FlatList
@@ -274,7 +550,17 @@ export default function OrderHistoryScreen() {
         <View style={styles.emptyContainer}>
           <Ionicons name="receipt-outline" size={80} color={colors.textSecondary} />
           <Text style={styles.emptyTitle}>Chưa có đơn hàng</Text>
-          <Text style={styles.emptySubtitle}>Bạn chưa có đơn hàng nào</Text>
+          <Text style={styles.emptySubtitle}>
+            Bạn chưa có đơn hàng nào.{'\n'}
+            Đơn hàng VNPAY sẽ xuất hiện tự động sau khi thanh toán thành công.
+          </Text>
+          <TouchableOpacity 
+            style={styles.refreshButton}
+            onPress={onRefresh}
+          >
+            <Ionicons name="refresh" size={20} color={colors.white} />
+            <Text style={styles.refreshButtonText}>Làm mới</Text>
+          </TouchableOpacity>
           <TouchableOpacity 
             style={styles.shopButton}
             onPress={() => navigation.navigate('Shop')}
@@ -478,6 +764,22 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: dimensions.spacing.large,
+    lineHeight: 22,
+  },
+  refreshButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: dimensions.spacing.large,
+    paddingVertical: dimensions.spacing.medium,
+    borderRadius: dimensions.borderRadius.medium,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: dimensions.spacing.medium,
+  },
+  refreshButtonText: {
+    color: colors.white,
+    fontSize: typography.sizes.medium,
+    fontWeight: typography.weights.medium,
+    marginLeft: dimensions.spacing.small,
   },
   shopButton: {
     backgroundColor: colors.accent,

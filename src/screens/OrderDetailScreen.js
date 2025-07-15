@@ -250,13 +250,13 @@ export default function OrderDetailScreen() {
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Chi tiết đơn hàng</Text>
+            <Text style={styles.headerTitle}>Order Detail</Text>
             <View style={{ width: 26 }} />
           </View>
         </SafeAreaView>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={styles.loadingText}>Đang tải chi tiết đơn hàng...</Text>
+          <Text style={styles.loadingText}>Loading order detail...</Text>
         </View>
       </View>
     );
@@ -271,7 +271,7 @@ export default function OrderDetailScreen() {
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Chi tiết đơn hàng</Text>
+            <Text style={styles.headerTitle}>Order Detail</Text>
             <View style={{ width: 26 }} />
           </View>
         </SafeAreaView>
@@ -297,7 +297,7 @@ export default function OrderDetailScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Chi tiết đơn hàng</Text>
+          <Text style={styles.headerTitle}>Order Detail</Text>
           <View style={{ width: 26 }} />
         </View>
       </SafeAreaView>

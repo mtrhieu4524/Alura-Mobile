@@ -1,7 +1,7 @@
 // Cấu hình environment cho ứng dụng Expo
 export const config = {
-  // API Configuration - fallback to localhost if env not available
-  baseUrl: process.env.EXPO_PUBLIC_BASEURL || 'http://localhost:4000/api/',
+  // API Configuration - Android emulator IP
+  baseUrl: process.env.EXPO_PUBLIC_BASEURL || 'http://10.0.2.2:4000/api/',
   
   // App Info
   appName: process.env.EXPO_PUBLIC_APP_NAME || 'Alura Mobile',

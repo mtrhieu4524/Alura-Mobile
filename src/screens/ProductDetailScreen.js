@@ -290,7 +290,7 @@ export default function ProductDetailScreen({ route, navigation }) {
 
         {/* Description */}
         <View style={styles.sectionBox}>
-          <Text style={styles.sectionTitle}>Mô tả sản phẩm</Text>
+          <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.sectionText}>
             {p.description || 'Sản phẩm chất lượng cao, an toàn cho da, phù hợp với mọi loại da.'}
           </Text>
@@ -299,7 +299,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         {/* Key Ingredients */}
         {p.keyIngredients && (
           <View style={styles.sectionBox}>
-            <Text style={styles.sectionTitle}>Thành phần chính</Text>
+            <Text style={styles.sectionTitle}>Key Ingredients</Text>
             <Text style={styles.sectionText}>{p.keyIngredients}</Text>
           </View>
         )}
@@ -307,33 +307,33 @@ export default function ProductDetailScreen({ route, navigation }) {
         {/* Instructions */}
         {p.instructions && (
           <View style={styles.sectionBox}>
-            <Text style={styles.sectionTitle}>Hướng dẫn sử dụng</Text>
+            <Text style={styles.sectionTitle}>Instructions</Text>
             <Text style={styles.sectionText}>{p.instructions}</Text>
           </View>
         )}
 
         {/* Product details */}
         <View style={styles.sectionBox}>
-          <Text style={styles.sectionTitle}>Thông tin chi tiết</Text>
+          <Text style={styles.sectionTitle}>Product details</Text>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Thương hiệu:</Text>
+            <Text style={styles.detailLabel}>Brand:</Text>
             <Text style={styles.detailValue}>{p.brand}</Text>
           </View>
           {p.volume && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Dung tích:</Text>
+              <Text style={styles.detailLabel}>Volume:</Text>
               <Text style={styles.detailValue}>{p.volume}</Text>
             </View>
           )}
           {p.skinType && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Loại da:</Text>
+              <Text style={styles.detailLabel}>Skin type:</Text>
               <Text style={styles.detailValue}>{p.skinType}</Text>
             </View>
           )}
           {p.skinColor && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Màu da phù hợp:</Text>
+              <Text style={styles.detailLabel}>Skin color:</Text>
               <Text style={styles.detailValue}>{p.skinColor}</Text>
             </View>
           )}

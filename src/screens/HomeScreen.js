@@ -228,9 +228,9 @@ export default function HomeScreen() {
         {/* Product Sections */}
         {!loading && (
           <>
-            {renderProductSection('Bán chạy nhất', bestSellers, 'bestsellers')}
-            {renderProductSection('Sản phẩm mới', newArrivals, 'new')}
-            {renderProductSection('Nổi bật', featuredProducts, 'featured')}
+            {renderProductSection('Best Sellers', bestSellers, 'bestsellers')}
+            {renderProductSection('New Arrivals', newArrivals, 'new')}
+            {renderProductSection('Featured', featuredProducts, 'featured')}
           </>
         )}
       </ScrollView>

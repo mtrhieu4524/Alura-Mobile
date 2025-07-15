@@ -324,13 +324,67 @@ export function CartProvider({ children }) {
 
   const updateQuantity = async (itemId, quantity) => {
     const token = await getToken();
+    
     if (token) {
-      // For API call, use cart item _id
+      // Find cart item to get its _id for API call
       const cartItem = cart.find(item => item.id === itemId || item._id === itemId);
       const cartItemId = cartItem?._id || itemId;
       return await updateQuantityAPI(cartItemId, quantity);
     } else {
       return updateQuantityLocal(itemId, quantity);
+    }
+  };
+
+
+
+  // Clear all items from cart (used after successful order)
+  const clearAllCart = async () => {
+    try {
+      console.log('🧹 Clearing cart after successful order...');
+      
+      // Clear local cart immediately for responsive UI
+      setCart([]);
+      console.log('✅ Local cart cleared for immediate UI update');
+      
+      const token = await getToken();
+      
+      if (token) {
+        try {
+          // Try to call clear cart API endpoint first (faster than individual deletions)
+          const clearApiUrl = getApiUrl('cart/clear');
+          console.log('🔄 Attempting to clear cart via API:', clearApiUrl);
+          
+          const response = await fetch(clearApiUrl, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            console.log('✅ Cart cleared via API successfully');
+          } else {
+            console.log('⚠️ Clear cart API not available or failed, backend may have already cleared cart');
+          }
+        } catch (apiError) {
+          console.log('⚠️ Clear cart API error (expected if backend already cleared):', apiError.message);
+        }
+        
+        // Always refresh cart from API to sync with backend state
+        console.log('🔄 Syncing cart with backend...');
+        await fetchCartFromAPI();
+        console.log('✅ Cart synced with backend');
+      }
+      
+      console.log('✅ Cart cleared successfully');
+      return { success: true };
+      
+    } catch (error) {
+      console.error('❌ Error clearing cart:', error);
+      // Even if API fails, local cart is still cleared
+      setCart([]);
+      return { success: true, message: 'Cart cleared locally, backend sync may have failed' };
     }
   };
 
@@ -341,7 +395,8 @@ export function CartProvider({ children }) {
       addToCart, 
       removeFromCart, 
       updateQuantity, 
-      fetchCartFromAPI 
+      fetchCartFromAPI,
+      clearAllCart
     }}>
       {children}
     </CartContext.Provider>
