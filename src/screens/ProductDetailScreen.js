@@ -140,8 +140,10 @@ export default function ProductDetailScreen({ route, navigation }) {
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Product detail</Text>
-            <View style={{ width: 22 }} />
+            <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+              Product detail
+            </Text>
+            <View style={{ width: 26 }} />
           </View>
         </SafeAreaView>
         <View style={styles.centerContent}>
@@ -161,8 +163,10 @@ export default function ProductDetailScreen({ route, navigation }) {
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Product detail</Text>
-            <View style={{ width: 22 }} />
+            <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+              Product detail
+            </Text>
+            <View style={{ width: 26 }} />
           </View>
         </SafeAreaView>
         <View style={styles.centerContent}>
@@ -203,10 +207,10 @@ export default function ProductDetailScreen({ route, navigation }) {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Product detail</Text>
-          <TouchableOpacity>
-            <Ionicons name="share-social-outline" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+            {product?.name || 'Product detail'}
+          </Text>
+          <View style={{ width: 26 }} />
         </View>
       </SafeAreaView>
       
@@ -218,17 +222,12 @@ export default function ProductDetailScreen({ route, navigation }) {
             style={styles.productImage}
             defaultSource={require('../../assets/product1.png')}
           />
-          <TouchableOpacity style={styles.heartBtn}>
+          {/* <TouchableOpacity style={styles.heartBtn}>
             <Ionicons name="heart-outline" size={28} color={colors.white} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           
           {/* Product badges */}
           <View style={styles.badgeContainer}>
-            {p.isNew && (
-              <View style={[styles.badge, styles.newBadge]}>
-                <Text style={styles.badgeText}>Mới</Text>
-              </View>
-            )}
             {p.isBestseller && (
               <View style={[styles.badge, styles.bestsellerBadge]}>
                 <Text style={styles.badgeText}>Bán chạy</Text>
@@ -246,12 +245,12 @@ export default function ProductDetailScreen({ route, navigation }) {
         <View style={styles.infoBox}>
           <Text style={styles.brand}>{p.brand}</Text>
           <Text style={styles.productName}>{p.name}</Text>
-          <View style={styles.ratingRow}>
-            <StarRow rating={p.rating} />
-            <Text style={styles.ratingText}>
-              {p.rating} (128 đánh giá)
-            </Text>
-          </View>
+          {/* <View style={styles.ratingRow}> */}
+            {/* <StarRow rating={p.rating} /> */}
+            {/* <Text style={styles.ratingText}>
+              {/* {p.rating} (128 đánh giá) */}
+            {/* </Text> */}
+          {/* </View> */}
           <View style={styles.priceRow}>
             <Text style={styles.price}>
               {typeof p.price === 'number' ? p.price.toLocaleString('vi-VN') : p.price} VND
@@ -339,7 +338,7 @@ export default function ProductDetailScreen({ route, navigation }) {
           )}
         </View>
 
-        {/* Customer Reviews tổng hợp */}
+        {/* Customer Reviews tổng hợp
         <View style={styles.reviewSummaryBox}>
           <Text style={styles.sectionTitle}>Đánh giá khách hàng</Text>
           <View style={styles.ratingOverview}>
@@ -349,7 +348,7 @@ export default function ProductDetailScreen({ route, navigation }) {
               <Text style={styles.ratingCount}>128 đánh giá</Text>
             </View>
           </View>
-          {/* Biểu đồ rating */}
+          Biểu đồ rating
           {ratingStats.map(r => (
             <View key={r.star} style={styles.ratingRow}>
               <FontAwesome name="star" size={15} color={colors.warning} style={{ marginRight: 4 }} />
@@ -360,9 +359,9 @@ export default function ProductDetailScreen({ route, navigation }) {
               <Text style={styles.ratingRowCount}>{r.count}</Text>
             </View>
           ))}
-        </View>
+        </View> */}
 
-        {/* Reviews */}
+        {/* Reviews
         <View style={styles.sectionBox}>
           <Text style={styles.sectionTitle}>Nhận xét</Text>
           {reviews.map(r => (
@@ -378,7 +377,7 @@ export default function ProductDetailScreen({ route, navigation }) {
               </View>
             </View>
           ))}
-        </View>
+        </View> */}
 
         {/* Bottom spacing for scroll */}
         <View style={styles.bottomSpacing} />
@@ -463,7 +462,8 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.large,
     fontWeight: typography.weights.bold,
     color: colors.textPrimary,
-    justifyContent: 'center',
+    flex: 1,
+    textAlign: 'center',
   },
   imageBox: {
     position: 'relative',

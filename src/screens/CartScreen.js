@@ -37,6 +37,7 @@ export default function CartScreen() {
     try {
       await updateQuantity(itemId, newQuantity);
     } catch (error) {
+      
       console.error('Error updating quantity:', error);
     }
   };
@@ -102,7 +103,7 @@ export default function CartScreen() {
         
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>Đang tải giỏ hàng...</Text>
         </View>
       </SafeAreaView>
     );
@@ -120,12 +121,12 @@ export default function CartScreen() {
         <View style={styles.emptyContainer}>
           <Ionicons name="cart-outline" size={80} color="#ccc" />
           <Text style={styles.emptyTitle}>Cart is empty</Text>
-          <Text style={styles.emptySubtitle}>Please add products to the cart to continue shopping</Text>
+          <Text style={styles.emptySubtitle}>Please add products to your cart to continue shopping</Text>
           <TouchableOpacity 
             style={styles.continueShoppingBtn}
             onPress={() => navigation.navigate('Shop')}
           >
-            <Text style={styles.continueShoppingText}>Continue Shopping</Text>
+            <Text style={styles.continueShoppingText}>Continue shopping</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

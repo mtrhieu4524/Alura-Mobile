@@ -36,12 +36,7 @@ export default function ProductCard({
         />
         
         {/* New/Bestseller badges */}
-        {product.isNew && (
-          <View style={[styles.badge, styles.newBadge]}>
-            <Text style={styles.badgeText}>Mới</Text>
-          </View>
-        )}
-        {product.isBestseller && !product.isNew && (
+        {product.isBestseller && (
           <View style={[styles.badge, styles.bestsellerBadge]}>
             <Text style={styles.badgeText}>Hot</Text>
           </View>

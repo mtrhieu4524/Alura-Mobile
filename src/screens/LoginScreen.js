@@ -138,7 +138,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         {/* OR CONTINUE WITH */}
-        <Text style={styles.orText}>OR CONTINUE WITH</Text>
+        {/* <Text style={styles.orText}>OR CONTINUE WITH</Text>
         <View style={styles.socialRow}>
           <TouchableOpacity style={styles.socialBtn} disabled={loading}>
             <FontAwesome name="google" size={24} color="#EA4335" />
@@ -149,7 +149,7 @@ export default function LoginScreen() {
           <TouchableOpacity style={styles.socialBtn} disabled={loading}>
             <FontAwesome name="apple" size={24} color="#000" />
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Đăng ký */}
         <View style={styles.signupRow}>

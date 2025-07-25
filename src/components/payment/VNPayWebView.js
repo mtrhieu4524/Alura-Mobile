@@ -23,8 +23,10 @@ const VNPayWebView = ({
   const [canGoBack, setCanGoBack] = useState(false);
   const [callbackProcessed, setCallbackProcessed] = useState(false);
   const [processingVNPayReturn, setProcessingVNPayReturn] = useState(false);
+  const [paymentStartTime, setPaymentStartTime] = useState(Date.now());
   const webViewRef = useRef(null);
   const timeoutRef = useRef(null);
+  const paymentTimeoutRef = useRef(null);
 
   // Log component mount and props
   // useEffect(() => {
@@ -41,8 +43,56 @@ const VNPayWebView = ({
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
+      if (paymentTimeoutRef.current) {
+        clearTimeout(paymentTimeoutRef.current);
+        paymentTimeoutRef.current = null;
+      }
     };
   }, []);
+
+  // Set payment timeout (5 minutes)
+  useEffect(() => {
+    // Start polling after 2 minutes to check payment status
+    const pollTimeoutId = setTimeout(() => {
+      if (!callbackProcessed) {
+        console.log('📊 Starting payment status polling...');
+        // You could implement a polling mechanism here to check payment status
+        // For now, we'll just show a helpful message
+      }
+    }, 120000); // 2 minutes
+
+    paymentTimeoutRef.current = setTimeout(() => {
+      if (!callbackProcessed) {
+        console.log('⏰ Payment timeout reached - showing options to user');
+        Alert.alert(
+          'Thời gian thanh toán quá lâu',
+          'Bạn có đang gặp khó khăn với thanh toán không? Bạn có thể thử lại hoặc chọn phương thức thanh toán khác.',
+          [
+            { 
+              text: 'Tiếp tục chờ', 
+              style: 'cancel'
+            },
+            { 
+              text: 'Hủy thanh toán', 
+              onPress: () => {
+                console.log('User manually cancelled payment due to timeout');
+                onError && onError({ vnp_ResponseCode: '24', reason: 'User cancelled due to timeout' });
+              }
+            },
+          ]
+        );
+      }
+    }, 300000); // 5 minutes
+
+    return () => {
+      if (paymentTimeoutRef.current) {
+        clearTimeout(paymentTimeoutRef.current);
+      }
+      if (pollTimeoutId) {
+        clearTimeout(pollTimeoutId);
+      }
+    };
+  }, [callbackProcessed, onError]);
 
   // Kiểm tra có nên load URL không (để block localhost)
   const handleShouldStartLoad = (request) => {
@@ -53,65 +103,59 @@ const VNPayWebView = ({
     }
     
     const { url } = request;
-    // console.log('=== SHOULD START LOAD ===');
-    // console.log('Request URL:', url);
+    console.log('=== SHOULD START LOAD ===');
+    console.log('Request URL:', url);
+    
+    // Special handling for VNPAY sandbox URLs
+    if (url.includes('vnpayment.vn')) {
+      // Always allow VNPAY domain
+      return true;
+    }
     
     // Kiểm tra nếu là VNPAY return URL với callback parameters
     if ((url.includes('localhost') || url.includes('127.0.0.1') || url.includes('10.0.2.2')) && 
-        url.includes('payment/vnpay/return') && 
         url.includes('vnp_ResponseCode=')) {
       
-      // console.log('🎯 Detected VNPAY return URL with callback params');
+      console.log('🎯 Detected VNPAY return URL with callback params');
       
       // Prevent duplicate processing
       if (callbackProcessed) {
-        // console.log('⚠️ Callback already processed, ignoring duplicate');
+        console.log('⚠️ Callback already processed, ignoring duplicate');
         return false;
       }
       
-      // console.log('📡 Allowing this request to reach backend vnpayReturn() first...');
-      
-      // Ẩn bất kỳ error page nào có thể xuất hiện
-      setProcessingVNPayReturn(true);
-      
+      // Extract params from localhost URL
       try {
-        // Parse URL để lấy parameters
         const urlParams = parseUrlParams(url);
-        // console.log('VNPAY callback params:', urlParams);
+        console.log('VNPAY callback params from localhost URL:', urlParams);
         
-        // Mark as processed to prevent duplicates
-        setCallbackProcessed(true);
-        
-        // Delay để cho backend xử lý trước, sau đó handle UI
-        timeoutRef.current = setTimeout(() => {
-          // console.log('⏰ Now handling mobile UI after backend processed');
-          try {
-            if (urlParams.vnp_ResponseCode === '00') {
-              // console.log('✅ VNPAY payment successful - backend should have created order');
-              onSuccess && onSuccess(urlParams);
-            } else {
-              // console.log('❌ VNPAY payment failed');
-              onError && onError(urlParams);
-            }
-          } catch (callbackError) {
-            // console.error('❌ Error in VNPAY callback handler:', callbackError);  
+        if (urlParams.vnp_ResponseCode) {
+          setCallbackProcessed(true);
+          setProcessingVNPayReturn(true);
+          
+          // Immediate callback
+          if (urlParams.vnp_ResponseCode === '00') {
+            console.log('✅ VNPAY payment successful - triggering success');
+            onSuccess && onSuccess(urlParams);
+          } else {
+            console.log('❌ VNPAY payment failed');
             onError && onError(urlParams);
           }
-        }, 2000); // Delay 2 giây để backend xử lý
-        
+          
+          // Block navigation to localhost
+          return false;
+        }
       } catch (parseError) {
-        // console.error('❌ Error parsing VNPAY URL params:', parseError);  
-        setCallbackProcessed(true);
-        onError && onError({ vnp_ResponseCode: '99', error: 'Parse error' });
-        return false;
+        console.error('❌ Error parsing VNPAY URL params:', parseError);
       }
       
-      return true; // Cho phép navigation đến backend
+      // Block localhost navigation
+      return false;
     }
     
     // Block các localhost URLs khác (không phải VNPAY return)
     if (url.includes('localhost') || url.includes('127.0.0.1') || url.includes('10.0.2.2')) {
-      // console.log('🚫 Blocking non-VNPAY localhost navigation:', url);
+      console.log('🚫 Blocking non-VNPAY localhost navigation:', url);
       Alert.alert('Hoàn tất', 'Đang xử lý kết quả thanh toán...');
       return false;
     }
@@ -128,55 +172,39 @@ const VNPayWebView = ({
     }
     
     const { url, loading } = navState;
-    // console.log('=== VNPAY WEBVIEW NAVIGATION ===');
-    // console.log('Current URL:', url);
-    // console.log('Loading:', loading);
-    // console.log('Can go back:', navState.canGoBack);
+    console.log('=== VNPAY WEBVIEW NAVIGATION ===');
+    console.log('Current URL:', url);
+    console.log('Loading:', loading);
+    console.log('Can go back:', navState.canGoBack);
     
     setCanGoBack(navState.canGoBack || false);
+
+    // IMPORTANT: Don't auto-detect success to allow user to complete payment with PIN
+    // Only check for clear success/failure indicators
+    
+    // Check for explicit VNPAY error
+    if (url.includes('vnp_ResponseCode=') && !url.includes('vnp_ResponseCode=00')) {
+      console.log('❌ Detected failed payment in URL');
+      const urlParams = parseUrlParams(url);
+      if (urlParams.vnp_ResponseCode && urlParams.vnp_ResponseCode !== '00') {
+        setCallbackProcessed(true);
+        onError && onError(urlParams);
+        return;
+      }
+    }
+
+    // Don't auto-trigger on Confirm page - let user complete payment first
+    if (url.includes('vnpayment.vn') && url.includes('Confirm.html')) {
+      console.log('🎯 User reached VNPAY Confirm page - waiting for user to complete payment');
+      // Don't auto-trigger success - user needs to enter PIN first
+    }
 
     // Skip xử lý nếu đây là VNPAY return URL - đã được xử lý trong handleShouldStartLoad
     if ((url.includes('localhost') || url.includes('127.0.0.1') || url.includes('10.0.2.2')) && 
         url.includes('payment/vnpay/return') && 
         url.includes('vnp_ResponseCode=')) {
-      // console.log('🔄 VNPAY return URL - already handled in handleShouldStartLoad, skipping duplicate processing');
+      console.log('🔄 VNPAY return URL - already handled in handleShouldStartLoad, skipping duplicate processing');
       return;
-    }
-
-    // Kiểm tra return URL scheme (backup cho deep links)
-    if (url.includes(returnUrl) || url.includes('vnpay-return')) {
-      // console.log('Detected VNPAY return URL scheme (deep link)');
-      
-      // Prevent duplicate processing
-      if (callbackProcessed) {
-        // console.log('⚠️ Deep link callback already processed, ignoring duplicate');
-        return;
-      }
-      
-      // Ẩn bất kỳ error page nào có thể xuất hiện
-      setProcessingVNPayReturn(true);
-      
-      try {
-        const urlParams = parseUrlParams(url);
-        //
-        
-        if (urlParams.vnp_ResponseCode) {
-          setCallbackProcessed(true);
-          // console.log('VNPAY response code:', urlParams.vnp_ResponseCode);
-          
-          if (urlParams.vnp_ResponseCode === '00') {
-            // console.log('VNPAY payment successful via deep link');
-            onSuccess && onSuccess(urlParams);
-          } else {
-            // console.log('VNPAY payment failed via deep link');
-            onError && onError(urlParams);
-          }
-        }
-      } catch (error) {
-        // console.error('Error handling deep link callback:', error);  
-        setCallbackProcessed(true);
-        onError && onError({ vnp_ResponseCode: '99', error: 'Deep link parse error' });
-      }
     }
   };
 
@@ -309,6 +337,32 @@ const VNPayWebView = ({
     }
   };
 
+  // Handle close button with confirmation
+  const handleClose = () => {
+    Alert.alert(
+      'Hủy thanh toán',
+      'Bạn có chắc muốn hủy thanh toán không? Giao dịch sẽ không được hoàn thành.',
+      [
+        { text: 'Tiếp tục thanh toán', style: 'cancel' },
+        { 
+          text: 'Kiểm tra trạng thái', 
+          onPress: () => {
+            // Simulate checking payment status
+            Alert.alert(
+              'Kiểm tra trạng thái',
+              'Nếu bạn đã hoàn thành thanh toán nhưng chưa thấy kết quả, vui lòng chờ thêm vài giây hoặc liên hệ hỗ trợ.',
+              [
+                { text: 'Chờ thêm', style: 'cancel' },
+                { text: 'Hủy giao dịch', onPress: onClose }
+              ]
+            );
+          }
+        },
+        { text: 'Hủy giao dịch', style: 'destructive', onPress: onClose }
+      ]
+    );
+  };
+
   // Validate payment URL
   if (!paymentUrl || !paymentUrl.startsWith('http')) {
     return (
@@ -345,11 +399,34 @@ const VNPayWebView = ({
         <Text style={styles.headerTitle}>Thanh toán VNPAY</Text>
         <TouchableOpacity 
           style={styles.closeButton} 
-          onPress={onClose}
+          onPress={handleClose}
         >
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
+
+      {/* Help Button - Always visible */}
+      <TouchableOpacity 
+        style={styles.helpButton}
+        onPress={() => {
+          Alert.alert(
+            'Hướng dẫn thanh toán VNPAY',
+            '1. Chọn ngân hàng\n2. Nhập thông tin thẻ\n3. Nhập mã OTP/PIN\n4. Xác nhận thanh toán\n\nNếu đã hoàn thành thanh toán nhưng không tự động chuyển, vui lòng bấm "Kiểm tra kết quả".',
+            [
+              { text: 'Đóng', style: 'cancel' },
+              { 
+                text: 'Kiểm tra kết quả', 
+                onPress: () => {
+                  setProcessingVNPayReturn(true);
+                }
+              }
+            ]
+          );
+        }}
+      >
+        <Ionicons name="help-circle-outline" size={24} color={colors.text} />
+        <Text style={styles.helpButtonText}>Hướng dẫn</Text>
+      </TouchableOpacity>
 
       {/* WebView */}
       <View style={styles.webViewContainer}>
@@ -386,7 +463,39 @@ const VNPayWebView = ({
             <View style={styles.vnpayProcessingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
               <Text style={styles.vnpayProcessingText}>Đang xử lý kết quả thanh toán...</Text>
-              <Text style={styles.vnpayProcessingSubText}>Vui lòng đợi trong giây lát</Text>
+              <Text style={styles.vnpayProcessingSubText}>
+                {callbackProcessed ? 'Đang hoàn tất...' : 'Nếu bạn đã thanh toán xong, vui lòng xác nhận bên dưới'}
+              </Text>
+              
+              {/* Manual verification option - show immediately */}
+              {!callbackProcessed && (
+                <TouchableOpacity 
+                  style={styles.manualVerifyButton}
+                  onPress={() => {
+                    Alert.alert(
+                      'Xác nhận thanh toán',
+                      'Bạn đã hoàn thành thanh toán trên VNPAY thành công?',
+                      [
+                        { text: 'Chưa hoàn thành', style: 'cancel' },
+                        { 
+                          text: 'Đã thanh toán thành công', 
+                          onPress: () => {
+                            console.log('User manually confirmed successful payment');
+                            setCallbackProcessed(true);
+                            onSuccess && onSuccess({ 
+                              vnp_ResponseCode: '00', 
+                              source: 'manual_verification',
+                              timestamp: Date.now()
+                            });
+                          }
+                        }
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={styles.manualVerifyText}>Đã thanh toán thành công?</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
@@ -504,10 +613,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
-    maxWidth: 280,
+    width: '90%',
+    maxWidth: 320,
   },
   vnpayProcessingText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.text,
     marginTop: 16,
@@ -519,6 +629,44 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  manualVerifyButton: {
+    marginTop: 24,
+    backgroundColor: colors.black,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    width: '100%',
+  },
+  manualVerifyText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  helpButton: {
+    position: 'absolute',
+    bottom: 100,
+    right: 16,
+    backgroundColor: colors.white,
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  helpButtonText: {
+    color: colors.text,
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

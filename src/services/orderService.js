@@ -7,6 +7,56 @@ class OrderService {
     return await AsyncStorage.getItem('token');
   }
 
+  // Place COD order using web format (matches web exactly)
+  async placeCODOrder(orderData) {
+    try {
+      const token = await this.getToken();
+      
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      console.log('=== PLACE COD ORDER DEBUG ===');
+      console.log('Order data (web format):', JSON.stringify(orderData, null, 2));
+
+      const apiUrl = getApiUrl('order/place');
+      console.log('Place COD order API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      console.log('Place COD order response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error('Place COD order error:', errorData);
+        throw new Error(errorData?.message || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Place COD order response:', data);
+      
+      return {
+        success: true,
+        data: data,
+        message: data.message || 'Order placed successfully'
+      };
+
+    } catch (error) {
+      console.error('Error placing COD order:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to place order'
+      };
+    }
+  }
+
   // Create new order (COD)
   async createOrder(orderData) {
     try {
@@ -104,12 +154,13 @@ class OrderService {
 
       // Transform mobile data to match web API format
       const prepareOrderData = {
-        shippingAddress: orderData.customerInfo.address,
+        shippingAddress: orderData.shippingAddress || orderData.customerInfo?.address,
         shippingMethod: orderData.shippingMethod,
-        promotionId: null,
+        promotionId: orderData.promotionId || null,
         note: orderData.note || '',
-        phoneNumber: orderData.customerInfo.phone,
-        selectedCartItemIds: orderData.items.map(item => item.productId)
+        phoneNumber: orderData.phoneNumber || orderData.customerInfo?.phone,
+        // Use selectedCartItemIds directly (web format) instead of mapping items
+        selectedCartItemIds: orderData.selectedCartItemIds || []
       };
 
       const apiUrl = getApiUrl('order/prepare-vnpay');
@@ -170,7 +221,11 @@ class OrderService {
         },
         body: JSON.stringify({
           ...paymentData,
-          bankCode: '' // Empty bank code for default behavior
+          bankCode: '', // Empty bank code for default behavior
+          // Add mobile platform identifier and return URL
+          platform: 'mobile',
+          mobileReturnUrl: 'alura://vnpay-return',
+          clientType: 'react-native'
         }),
       });
 
