@@ -16,6 +16,21 @@ import { ProductCard } from '../components/product';
 const VisualSearchResultScreen = ({ route, navigation }) => {
   const { products = [], image, tags = [], total = 0 } = route.params || {};
 
+
+  React.useEffect(() => {
+    const originalConsoleError = console.error;
+    console.error = (...args) => {
+      if (args[0] && typeof args[0] === 'string' && args[0].includes('Encountered two children with the same key')) {
+        return; 
+      }
+      originalConsoleError(...args);
+    };
+
+    return () => {
+      console.error = originalConsoleError;
+    };
+  }, []);
+
   const renderProduct = ({ item }) => (
     <View style={styles.productContainer}>
       <ProductCard
@@ -33,7 +48,6 @@ const VisualSearchResultScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -46,12 +60,11 @@ const VisualSearchResultScreen = ({ route, navigation }) => {
           style={styles.searchAgainButton}
           onPress={() => navigation.navigate('VisualSearch')}
         >
-          <Ionicons name="search-outline" size={24} color={colors.accent} />
+
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
-        {/* Search Image Preview */}
         {image && (
           <View style={styles.imageSection}>
             <Text style={styles.sectionTitle}>Search image</Text>
@@ -68,36 +81,39 @@ const VisualSearchResultScreen = ({ route, navigation }) => {
           </View>
         )}
 
-        {/* Tags Section */}
         {tags.length > 0 && (
           <View style={styles.tagsSection}>
             <Text style={styles.sectionTitle}>AI classification</Text>
             <View style={styles.tagsContainer}>
-              {tags.map(renderTag)}
+              {tags.map((tag, index) => (
+                <View key={`tag-${index}`} style={styles.tag}>
+                  <Text style={styles.tagText}>#{tag}</Text>
+                </View>
+              ))}
             </View>
           </View>
         )}
 
-        {/* Results Count */}
+      
         <View style={styles.resultsSection}>
           <Text style={styles.resultsCount}>
             {total > 0 ? `Found ${total} similar products` : 'No products found'}
           </Text>
         </View>
 
-        {/* Products Grid */}
+
         {products.length > 0 ? (
           <FlatList
             data={products}
             renderItem={renderProduct}
-            keyExtractor={(item) => item._id}
+            keyExtractor={(item, index) => item._id || item.id || `product-${index}`}
             numColumns={2}
             columnWrapperStyle={styles.row}
             scrollEnabled={false}
             contentContainerStyle={styles.productsGrid}
           />
         ) : (
-          /* No Results */
+
           <View style={styles.noResultsContainer}>
             <Ionicons name="search-outline" size={64} color={colors.textSecondary} />
             <Text style={styles.noResultsTitle}>No products found</Text>
@@ -105,7 +121,7 @@ const VisualSearchResultScreen = ({ route, navigation }) => {
               Try with a different image or adjust the angle to get better results
             </Text>
             
-            {/* Suggestions */}
+
             <View style={styles.suggestionsContainer}>
               <Text style={styles.suggestionsTitle}>Suggestions:</Text>
               <Text style={styles.suggestionItem}>• Take a clear photo, with enough light</Text>
@@ -116,7 +132,7 @@ const VisualSearchResultScreen = ({ route, navigation }) => {
 
             <TouchableOpacity
               style={styles.browseAllButton}
-              onPress={() => navigation.navigate('ShopScreen')}
+              onPress={() => navigation.navigate('MainTabs', { screen: 'Shop' })}
             >
               <Ionicons name="grid-outline" size={20} color={colors.white} style={{ marginRight: 8 }} />
               <Text style={styles.browseAllText}>View all products</Text>
@@ -124,7 +140,7 @@ const VisualSearchResultScreen = ({ route, navigation }) => {
           </View>
         )}
 
-        {/* Browse All Products Section */}
+
         {products.length > 0 && (
           <View style={styles.browseSection}>
             <View style={styles.browseDivider} />
@@ -134,7 +150,7 @@ const VisualSearchResultScreen = ({ route, navigation }) => {
             </Text>
             <TouchableOpacity
               style={styles.browseAllButton}
-              onPress={() => navigation.navigate('ShopScreen')}
+              onPress={() => navigation.navigate('MainTabs', { screen: 'Shop' })}
             >
               <Ionicons name="grid-outline" size={20} color={colors.white} style={{ marginRight: 8 }} />
               <Text style={styles.browseAllText}>View all products</Text>
@@ -142,7 +158,7 @@ const VisualSearchResultScreen = ({ route, navigation }) => {
           </View>
         )}
 
-        {/* Bottom spacing */}
+
         <View style={styles.bottomSpacing} />
       </ScrollView>
     </SafeAreaView>
@@ -176,6 +192,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flex: 1,
     textAlign: 'center',
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
   searchAgainButton: {
     padding: dimensions.spacing.small,

@@ -1,35 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { authService } from '../services';
 import { colors } from '../constants';
 import Toast from 'react-native-toast-message';
 
 const { width, height } = Dimensions.get('window');
 
-export default function ForgotPasswordScreen() {
-  const [email, setEmail] = useState('');
+export default function VerifyCodeScreen() {
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
+  const route = useRoute();
+  const email = route.params?.email || '';
 
-  const handleSendEmail = async () => {
-    if (!email.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập email!');
+  useEffect(() => {
+    if (!email) {
+      navigation.navigate('Login');
+    }
+  }, [email, navigation]);
+
+  const handleVerifyCode = async () => {
+    if (!code.trim()) {
+      Alert.alert('Error', 'Please enter the verification code!');
       return;
     }
 
     setLoading(true);
     try {
-      const result = await authService.forgotPassword(email.trim());
+      const result = await authService.verifyResetCode(email, code.trim());
       
       if (result.success) {
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: result.message
-        });
-        navigation.navigate('VerifyCode', { email: email.trim() });
+        navigation.navigate('ResetPassword', { email, code: code.trim() });
       } else {
         Toast.show({
           type: 'error',
@@ -38,8 +41,8 @@ export default function ForgotPasswordScreen() {
         });
       }
     } catch (error) {
-      console.error('Forgot password error:', error);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+      console.error('Verify code error:', error);
+      Alert.alert('Error', 'An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -60,18 +63,17 @@ export default function ForgotPasswordScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.title}>Forgot Password</Text>
-        <Text style={styles.subtitle}>Enter your account's email to receive a verify mail for reset password</Text>
+        <Text style={styles.title}>Verify Code</Text>
+        <Text style={styles.subtitle}>Enter code received through email for reset password</Text>
         
         <View style={styles.inputWrapper}>
-          <Ionicons name="mail-outline" size={20} color="#888" style={styles.inputIcon} />
+          <Ionicons name="key-outline" size={20} color="#888" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Enter email"
+            placeholder="Enter code"
             placeholderTextColor="#bbb"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
+            value={code}
+            onChangeText={setCode}
             autoCapitalize="none"
             editable={!loading}
           />
@@ -79,23 +81,23 @@ export default function ForgotPasswordScreen() {
 
         <TouchableOpacity 
           style={[styles.confirmBtn, loading && styles.confirmBtnDisabled]} 
-          onPress={handleSendEmail}
+          onPress={handleVerifyCode}
           disabled={loading}
         >
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color="#fff" />
-              <Text style={styles.confirmText}>Đang gửi...</Text>
+              <Text style={styles.confirmText}>Verifying...</Text>
             </View>
           ) : (
             <Text style={styles.confirmText}>Confirm</Text>
           )}
         </TouchableOpacity>
-          
-        <View style={styles.signInRow}>
-          <Text style={styles.signInText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')} disabled={loading}>
-            <Text style={styles.signInLink}>Sign in</Text>
+
+        <View style={styles.resendRow}>
+          <Text style={styles.resendText}>Haven't received the code? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} disabled={loading}>
+            <Text style={styles.resendLink}>Resend</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -187,16 +189,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
-  signInRow: {
+  resendRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 16,
   },
-  signInText: {
+  resendText: {
     color: '#888',
     fontSize: 14,
   },
-  signInLink: {
+  resendLink: {
     color: colors.accent,
     fontWeight: 'bold',
     fontSize: 14,

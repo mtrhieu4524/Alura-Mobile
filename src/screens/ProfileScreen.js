@@ -21,14 +21,12 @@ import Toast from 'react-native-toast-message';
 const ProfileScreen = ({ navigation }) => {
   const { user, isLoggedIn, logout } = useAuth();
   
-  // Profile form states
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [isGoogleUser, setIsGoogleUser] = useState(false);
   
-  // Password form states
   const [isPasswordFormVisible, setPasswordFormVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -37,12 +35,10 @@ const ProfileScreen = ({ navigation }) => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  // Loading states
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [userId, setUserId] = useState(null);
 
-  // Load user profile on component mount
   useEffect(() => {
     const loadUserProfile = async () => {
       if (!isLoggedIn) {
@@ -66,8 +62,8 @@ const ProfileScreen = ({ navigation }) => {
           } else {
             Toast.show({
               type: 'error',
-              text1: 'Lỗi',
-              text2: 'Không thể tải thông tin profile',
+              text1: 'Error',
+              text2: 'Cannot load profile information',
             });
           }
         }
@@ -75,8 +71,8 @@ const ProfileScreen = ({ navigation }) => {
         console.error('Error loading profile:', error);
         Toast.show({
           type: 'error',
-          text1: 'Lỗi',
-          text2: 'Có lỗi xảy ra khi tải profile',
+            text1: 'Error',
+          text2: 'An error occurred while loading profile',
         });
       } finally {
         setProfileLoading(false);
@@ -88,15 +84,15 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleLogout = () => {
     Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất?',
+      'Logout',
+      'Are you sure you want to logout?',
       [
         {
-          text: 'Hủy',
+          text: 'Cancel',
           style: 'cancel',
         },
         {
-          text: 'Đăng xuất',
+          text: 'Logout',
           onPress: async () => {
             const result = await logout();
             if (result.success) {
@@ -115,8 +111,8 @@ const ProfileScreen = ({ navigation }) => {
     if (!userId) {
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Không thể cập nhật profile',
+        text1: 'Error',
+        text2: 'Cannot update profile',
       });
       return;
     }
@@ -124,8 +120,8 @@ const ProfileScreen = ({ navigation }) => {
     if (!name.trim()) {
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Vui lòng nhập tên',
+        text1: 'Error',
+        text2: 'Please enter name',
       });
       return;
     }
@@ -143,22 +139,22 @@ const ProfileScreen = ({ navigation }) => {
       if (response.success) {
         Toast.show({
           type: 'success',
-          text1: 'Thành công',
-          text2: 'Cập nhật profile thành công!',
+          text1: 'Success',
+          text2: 'Profile updated successfully!',
         });
       } else {
         Toast.show({
           type: 'error',
-          text1: 'Lỗi',
-          text2: response.message || 'Cập nhật profile thất bại',
+          text1: 'Error',
+          text2: response.message || 'Failed to update profile',
         });
       }
     } catch (error) {
       console.error('Error updating profile:', error);
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Có lỗi xảy ra khi cập nhật profile',
+        text1: 'Error',
+        text2: 'An error occurred while updating profile',
       });
     } finally {
       setLoading(false);
@@ -169,8 +165,8 @@ const ProfileScreen = ({ navigation }) => {
     if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Vui lòng điền đầy đủ thông tin',
+        text1: 'Error',
+        text2: 'Please fill in all information',
       });
       return;
     }
@@ -178,8 +174,8 @@ const ProfileScreen = ({ navigation }) => {
     if (newPassword !== confirmPassword) {
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Mật khẩu mới không khớp',
+        text1: 'Error',
+        text2: 'New password does not match',
       });
       return;
     }
@@ -187,8 +183,8 @@ const ProfileScreen = ({ navigation }) => {
     if (newPassword.length < 6) {
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Mật khẩu mới phải có ít nhất 6 ký tự',
+        text1: 'Error',
+        text2: 'New password must be at least 6 characters',
       });
       return;
     }
@@ -199,8 +195,8 @@ const ProfileScreen = ({ navigation }) => {
       if (response.success) {
         Toast.show({
           type: 'success',
-          text1: 'Thành công',
-          text2: 'Đổi mật khẩu thành công!',
+          text1: 'Success',
+          text2: 'Password changed successfully!',
         });
         setCurrentPassword('');
         setNewPassword('');
@@ -209,16 +205,16 @@ const ProfileScreen = ({ navigation }) => {
       } else {
         Toast.show({
           type: 'error',
-          text1: 'Lỗi',
-          text2: response.message || 'Đổi mật khẩu thất bại',
+          text1: 'Error',
+          text2: response.message || 'Failed to change password',
         });
       }
     } catch (error) {
       console.error('Error changing password:', error);
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Có lỗi xảy ra khi đổi mật khẩu',
+        text1: 'Error',
+        text2: 'An error occurred while changing password',
       });
     } finally {
       setLoading(false);
@@ -229,10 +225,8 @@ const ProfileScreen = ({ navigation }) => {
   return (
       <SafeAreaView style={styles.container}>
         <ScrollView style={styles.guestScrollView} contentContainerStyle={styles.guestContainer}>
-          {/* Header */}
           <Text style={styles.guestHeaderTitle}>Your Profile</Text>
           
-          {/* Welcome Section */}
           <View style={styles.welcomeSection}>
             <View style={styles.guestAvatarContainer}>
               <View style={styles.guestAvatar}>
@@ -253,7 +247,6 @@ const ProfileScreen = ({ navigation }) => {
       </TouchableOpacity>
     </View>
 
-          {/* Why Log In Section */}
           <View style={styles.whyLoginSection}>
       <Text style={styles.sectionTitle}>Why Log In?</Text>
             
@@ -288,7 +281,6 @@ const ProfileScreen = ({ navigation }) => {
             </TouchableOpacity>
       </View>
 
-          {/* Visit Us Section */}
           <View style={styles.visitUsSection}>
             <Text style={styles.sectionTitle}>Visit Us</Text>
             
@@ -342,7 +334,6 @@ const ProfileScreen = ({ navigation }) => {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Header Section */}
           <View style={styles.headerSection}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatar}>
@@ -368,7 +359,6 @@ const ProfileScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Quick Actions */}
           <View style={styles.quickActionsSection}>
             <TouchableOpacity 
               style={styles.quickActionItem}
@@ -382,11 +372,9 @@ const ProfileScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Profile Form Section */}
           <View style={styles.formSection}>
             <Text style={styles.sectionTitle}>Personal information</Text>
             
-            {/* Name Field */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Name *</Text>
               <TextInput
@@ -404,7 +392,6 @@ const ProfileScreen = ({ navigation }) => {
               )}
             </View>
 
-            {/* Email Field */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email *</Text>
               <TextInput
@@ -417,7 +404,6 @@ const ProfileScreen = ({ navigation }) => {
               />
             </View>
 
-            {/* Phone Field */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Phone number</Text>
               <TextInput
@@ -430,7 +416,6 @@ const ProfileScreen = ({ navigation }) => {
               />
             </View>
 
-            {/* Address Field */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Address</Text>
               <TextInput
@@ -445,7 +430,6 @@ const ProfileScreen = ({ navigation }) => {
               />
         </View>
 
-            {/* Save Button */}
             <TouchableOpacity
               style={[styles.primaryButton, loading && styles.disabledButton]}
               onPress={handleSaveProfile}
@@ -462,7 +446,6 @@ const ProfileScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Password Section */}
           {!isGoogleUser && (
             <View style={styles.formSection}>
               <TouchableOpacity
@@ -479,7 +462,6 @@ const ProfileScreen = ({ navigation }) => {
 
               {isPasswordFormVisible && (
                 <View style={styles.passwordForm}>
-                  {/* Current Password */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Mật khẩu hiện tại *</Text>
                     <View style={styles.passwordInputContainer}>
@@ -504,7 +486,6 @@ const ProfileScreen = ({ navigation }) => {
                     </View>
                   </View>
 
-                  {/* New Password */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Mật khẩu mới *</Text>
                     <View style={styles.passwordInputContainer}>
@@ -530,7 +511,6 @@ const ProfileScreen = ({ navigation }) => {
                     <Text style={styles.helperText}>Mật khẩu phải có ít nhất 6 ký tự</Text>
                   </View>
 
-                  {/* Confirm Password */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Xác nhận mật khẩu mới *</Text>
                     <View style={styles.passwordInputContainer}>
@@ -555,7 +535,6 @@ const ProfileScreen = ({ navigation }) => {
                     </View>
                   </View>
 
-                  {/* Save Password Button */}
                   <TouchableOpacity
                     style={[styles.secondaryButton, loading && styles.disabledButton]}
                     onPress={handleChangePassword}
@@ -575,7 +554,6 @@ const ProfileScreen = ({ navigation }) => {
     </View>
           )}
 
-          {/* Bottom spacing */}
           <View style={styles.bottomSpacing} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -592,14 +570,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120, // Space for floating tab bar
+    paddingBottom: 120, 
   },
   guestScrollView: {
     flex: 1,
   },
   guestContainer: {
     paddingHorizontal: dimensions.spacing.large,
-    paddingBottom: 120, // Space for floating tab bar
+    paddingBottom: 120, 
   },
   guestHeaderTitle: {
     fontSize: typography.sizes.xLarge,
@@ -656,6 +634,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: typography.sizes.medium,
     fontWeight: typography.weights.bold,
+    paddingHorizontal: 28,
   },
   whyLoginSection: {
     padding: dimensions.spacing.large,

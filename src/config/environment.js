@@ -1,24 +1,23 @@
-// Cấu hình environment cho ứng dụng Expo
+
 export const config = {
-  // API Configuration - Android emulator IP
   baseUrl: process.env.EXPO_PUBLIC_BASEURL || 'http://10.0.2.2:4000/api/',
   
-  // App Info
   appName: process.env.EXPO_PUBLIC_APP_NAME || 'Alura Mobile',
   appVersion: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
   
-  // Environment
   nodeEnv: process.env.EXPO_PUBLIC_NODE_ENV || 'development',
   isDevelopment: process.env.EXPO_PUBLIC_NODE_ENV === 'development',
   isProduction: process.env.EXPO_PUBLIC_NODE_ENV === 'production',
-  
-  // API Endpoints
+
   endpoints: {
     auth: {
       login: 'auth/login',
       register: 'auth/register',
       logout: 'auth/logout',
       profile: 'auth/profile',
+      forgotPassword: 'auth/forgot-password',
+      verifyResetCode: 'auth/verify-reset-code',
+      resetPassword: 'auth/reset-password',
     },
     products: {
       list: 'products',
@@ -45,17 +44,15 @@ export const config = {
   }
 };
 
-// Helper function để tạo full API URL
 export const getApiUrl = (endpoint) => {
   const baseUrl = config.baseUrl.endsWith('/') ? config.baseUrl : config.baseUrl + '/';
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
   const fullUrl = `${baseUrl}${cleanEndpoint}`;
   
-  console.log('Config baseUrl:', config.baseUrl); // Debug log
-  console.log('Generated API URL:', fullUrl); // Debug log
+  console.log('Config baseUrl:', config.baseUrl); 
+  console.log('Generated API URL:', fullUrl); 
   
   return fullUrl;
 };
 
-// Export default config
 export default config; 

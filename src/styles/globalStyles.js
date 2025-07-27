@@ -4,7 +4,6 @@ import { colors, dimensions, typography } from '../constants';
 const { width, height } = Dimensions.get('window');
 
 export const globalStyles = StyleSheet.create({
-  // Container styles
   container: {
     flex: 1,
     backgroundColor: colors.white,
@@ -20,7 +19,6 @@ export const globalStyles = StyleSheet.create({
     paddingHorizontal: dimensions.paddingLarge,
   },
   
-  // Flexbox utilities
   flex1: {
     flex: 1,
   },
@@ -49,7 +47,6 @@ export const globalStyles = StyleSheet.create({
     justifyContent: 'space-around',
   },
   
-  // Text styles
   textCenter: {
     textAlign: 'center',
   },
@@ -62,7 +59,6 @@ export const globalStyles = StyleSheet.create({
     textAlign: 'right',
   },
   
-  // Typography variants
   heading1: {
     fontSize: typography.fontSizeHuge,
     fontWeight: typography.fontWeightBold,
@@ -101,7 +97,6 @@ export const globalStyles = StyleSheet.create({
     color: colors.textSecondary,
   },
   
-  // Shadow styles
   shadowSmall: {
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
@@ -126,7 +121,6 @@ export const globalStyles = StyleSheet.create({
     elevation: 16,
   },
   
-  // Border styles
   borderTop: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
@@ -152,7 +146,6 @@ export const globalStyles = StyleSheet.create({
     borderColor: colors.border,
   },
   
-  // Spacing utilities
   marginSmall: {
     margin: dimensions.marginSmall,
   },
@@ -177,7 +170,6 @@ export const globalStyles = StyleSheet.create({
     padding: dimensions.paddingLarge,
   },
   
-  // Section styles
   sectionContainer: {
     paddingHorizontal: dimensions.paddingLarge,
     marginBottom: dimensions.marginLarge,
@@ -210,7 +202,7 @@ export const globalStyles = StyleSheet.create({
   tabScreenContainer: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingBottom: 100, // Space for floating tab bar
+    paddingBottom: 100, 
   },
   
   screenTitle: {

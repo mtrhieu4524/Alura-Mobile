@@ -41,7 +41,6 @@ export default function OrderDetailScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch order detail from API
   const fetchOrderDetail = async () => {
     try {
       setLoading(true);
@@ -56,8 +55,8 @@ export default function OrderDetailScreen() {
         setError(response.message);
         Toast.show({
           type: 'error',
-          text1: 'Lỗi',
-          text2: response.message || 'Không thể tải chi tiết đơn hàng',
+          text1: 'Error',
+          text2: response.message || 'Cannot load order detail',
         });
       }
     } catch (error) {
@@ -68,7 +67,6 @@ export default function OrderDetailScreen() {
     }
   };
 
-  // Load order detail on mount
   useEffect(() => {
     if (initialOrder.orderId) {
       fetchOrderDetail();
@@ -88,53 +86,77 @@ export default function OrderDetailScreen() {
     return price.toLocaleString('vi-VN') + ' VND';
   };
 
-  // Handle both URL images (from API) and local assets
   const getImageSource = (product) => {
     if (product.image) {
-      // If it's a string (URL), use { uri: ... }
       if (typeof product.image === 'string') {
         return { uri: product.image };
       }
-      // If it's a local asset (require()), use directly
       return product.image;
     }
     
-    // Fallback to a placeholder if no image
-    return require('../../assets/product1.png'); // Default placeholder
+    return require('../../assets/product1.png'); 
   };
 
-  // Handle cancel order
+  const handleProductPress = (item) => {
+    console.log('Navigating to product detail from order for:', item.name);
+    console.log('Order item data:', {
+      id: item.id,
+      productId: item.productId,
+      _id: item._id,
+      name: item.name,
+      image: item.image
+    });
+    
+    const productId = item.productId || item._id || item.id;
+    
+    console.log('Extracted productId:', productId);
+    
+    if (!productId) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Cannot open product detail page',
+      });
+      return;
+    }
+    
+    console.log('Using productId for navigation:', productId);
+    
+    navigation.navigate('ProductDetail', { 
+      productId: productId
+    });
+  };
+
   const handleCancelOrder = () => {
     if (order.status === 'Cancelled' || order.status === 'Success' || order.status === 'Delivered' || order.status === 'Shipped') {
       return;
     }
 
     Alert.alert(
-      'Hủy đơn hàng',
-      'Bạn có chắc chắn muốn hủy đơn hàng này?',
+      'Cancel Order',
+      'Are you sure you want to cancel this order?',
       [
         {
-          text: 'Không',
+          text: 'No',
           style: 'cancel',
         },
         {
-          text: 'Hủy đơn hàng',
+          text: 'Cancel Order',
           style: 'destructive',
           onPress: async () => {
             const response = await orderService.cancelOrder(order.orderId);
             if (response.success) {
               Toast.show({
                 type: 'success',
-                text1: 'Thành công',
-                text2: 'Đơn hàng đã được hủy',
+                text1: 'Success',
+                text2: 'Order has been canceled',
               });
-              // Update order status locally
               setOrder(prev => ({ ...prev, status: 'Cancelled' }));
             } else {
               Toast.show({
                 type: 'error',
-                text1: 'Lỗi',
-                text2: response.message || 'Không thể hủy đơn hàng',
+                text1: 'Error',
+                text2: response.message || 'Cannot cancel order.',
               });
             }
           },
@@ -151,11 +173,9 @@ export default function OrderDetailScreen() {
     const statuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Success'];
     let currentIndex = -1;
     
-    // Use status from order history (initialOrder), not from API response
     const statusFromHistory = initialOrder.status;
     console.log('Using status from order history:', statusFromHistory);
     
-    // Map API status to our flow position
     switch (statusFromHistory) {
       case 'Pending':
         currentIndex = 0;
@@ -173,7 +193,7 @@ export default function OrderDetailScreen() {
         currentIndex = 4;
         break;
       case 'Paid':
-        currentIndex = 4; // Treat as completed
+        currentIndex = 4; 
         break;
       default:
         console.log('Unknown status:', statusFromHistory, 'defaulting to Pending');
@@ -241,7 +261,6 @@ export default function OrderDetailScreen() {
     );
   };
 
-  // Loading state
   if (loading) {
     return (
       <View style={styles.container}>
@@ -262,7 +281,6 @@ export default function OrderDetailScreen() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <View style={styles.container}>
@@ -303,13 +321,11 @@ export default function OrderDetailScreen() {
       </SafeAreaView>
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Order Status */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Status</Text>
           <StatusTracker />
         </View>
 
-        {/* Order Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Information</Text>
           <View style={styles.infoCard}>
@@ -341,11 +357,15 @@ export default function OrderDetailScreen() {
           </View>
         </View>
 
-        {/* Order Items */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Items</Text>
           {order.items.map((item, index) => (
-            <View key={index} style={styles.itemCard}>
+            <TouchableOpacity 
+              key={index} 
+              style={styles.itemCard}
+              onPress={() => handleProductPress(item)}
+              activeOpacity={0.7}
+            >
               <Image 
                 source={getImageSource(item)} 
                 style={styles.itemImage} 
@@ -354,9 +374,6 @@ export default function OrderDetailScreen() {
               <View style={styles.itemInfo}>
                 <View style={styles.itemHeader}>
                   <Text style={styles.itemName}>{item.name} x {item.quantity}</Text>
-                  <TouchableOpacity style={styles.viewLink}>
-                    <Text style={styles.viewLinkText}>VIEW</Text>
-                  </TouchableOpacity>
                 </View>
                 
                 {item.type && (
@@ -375,15 +392,13 @@ export default function OrderDetailScreen() {
               <View style={styles.itemPricing}>
                 <Text style={styles.itemTotal}>{(item.lineTotal || item.price * item.quantity).toLocaleString('vi-VN')} VND</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
 
-        {/* Customer Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Customer Information</Text>
           <View style={styles.infoCard}>
-            {/* Customer Name */}
             <View style={styles.infoRow}>
               <View style={styles.infoLabelRow}>
                 <Ionicons name="person-outline" size={18} color={colors.textSecondary} />
@@ -392,7 +407,6 @@ export default function OrderDetailScreen() {
               <Text style={styles.infoValue}>{order.customerInfo?.name || 'N/A'}</Text>
             </View>
             
-            {/* Phone Number */}
             <View style={styles.infoRow}>
               <View style={styles.infoLabelRow}>
                 <Ionicons name="call-outline" size={18} color={colors.textSecondary} />
@@ -401,7 +415,6 @@ export default function OrderDetailScreen() {
               <Text style={styles.infoValue}>{order.customerInfo?.phone || 'N/A'}</Text>
             </View>
             
-            {/* Payment Method */}
             <View style={styles.infoRow}>
               <View style={styles.infoLabelRow}>
                 <Ionicons name="card-outline" size={18} color={colors.textSecondary} />
@@ -411,8 +424,7 @@ export default function OrderDetailScreen() {
                 {order.paymentMethod === 'VNPAY' || order.paymentMethod === 'vnpay' || order.paymentMethod === 'VNPay' ? 'VNPAY' : 'Cash on Delivery'}
               </Text>
             </View>
-            
-            {/* Shipping */}
+
             <View style={styles.infoRow}>
               <View style={styles.infoLabelRow}>
                 <Ionicons name="car-outline" size={18} color={colors.textSecondary} />
@@ -421,7 +433,6 @@ export default function OrderDetailScreen() {
               <Text style={styles.infoValue}>{(order.shippingFee || 0).toLocaleString('vi-VN')} VND</Text>
             </View>
 
-            {/* Address */}
             <View style={styles.infoRow}>
               <View style={styles.infoLabelRow}>
                 <Ionicons name="location-outline" size={18} color={colors.textSecondary} />
@@ -430,7 +441,6 @@ export default function OrderDetailScreen() {
               <Text style={[styles.infoValue, styles.addressText]}>{order.customerInfo?.address || 'N/A'}</Text>
             </View>
 
-            {/* Note */}
             {order.note && (
               <View style={styles.infoRow}>
                 <View style={styles.infoLabelRow}>
@@ -443,7 +453,6 @@ export default function OrderDetailScreen() {
           </View>
         </View>
 
-        {/* Order Footer */}
         <View style={styles.section}>
           <View style={styles.orderFooter}>
             <Text style={styles.orderDate}>
@@ -455,7 +464,6 @@ export default function OrderDetailScreen() {
           </View>
         </View>
 
-        {/* Actions */}
         {order.status !== 'Cancelled' && order.status !== 'Success' && order.status !== 'Delivered' && order.status !== 'Shipped' && (
           <View style={styles.actionSection}>
             <TouchableOpacity style={styles.cancelOrderButton} onPress={handleCancelOrder}>
@@ -472,7 +480,6 @@ export default function OrderDetailScreen() {
           </View>
         )}
 
-        {/* Contact Support */}
         <View style={styles.actionSection}>
           <TouchableOpacity style={styles.contactButton}>
             <Ionicons name="chatbubble-outline" size={20} color={colors.accent} />
@@ -657,7 +664,6 @@ const styles = StyleSheet.create({
   },
   itemHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
   },
@@ -666,17 +672,6 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
     color: colors.text,
     flex: 1,
-  },
-  viewLink: {
-    paddingHorizontal: dimensions.spacing.small,
-    paddingVertical: 4,
-    backgroundColor: colors.accent,
-    borderRadius: dimensions.borderRadius.small,
-  },
-  viewLinkText: {
-    color: colors.white,
-    fontSize: typography.sizes.small,
-    fontWeight: typography.weights.medium,
   },
   itemAttribute: {
     fontSize: typography.sizes.small,
@@ -711,7 +706,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.medium,
     color: colors.text,
     fontWeight: typography.weights.medium,
-    marginLeft: 24, // Align with label text (icon size + margin)
+    marginLeft: 24, 
     lineHeight: 20,
   },
   orderFooter: {

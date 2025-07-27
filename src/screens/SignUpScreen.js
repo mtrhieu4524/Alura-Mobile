@@ -155,19 +155,16 @@ const SignUpScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Background Image */}
       <Image 
         source={require('../../assets/login-bg.png')} 
         style={styles.backgroundImage} 
         resizeMode="cover" 
       />
       
-      {/* Form Container */}
       <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.subtitle}>Sign up to get started</Text>
         
-        {/* Name Input */}
         <View style={styles.inputWrapper}>
           <Ionicons name="person-outline" size={20} color="#888" style={styles.inputIcon} />
           <TextInput
@@ -182,7 +179,6 @@ const SignUpScreen = ({ navigation }) => {
           />
         </View>
 
-        {/* Email Input */}
         <View style={styles.inputWrapper}>
           <Ionicons name="mail-outline" size={20} color="#888" style={styles.inputIcon} />
           <TextInput
@@ -198,7 +194,6 @@ const SignUpScreen = ({ navigation }) => {
           />
         </View>
 
-        {/* Password Input */}
         <View style={styles.inputWrapper}>
           <Ionicons name="lock-closed-outline" size={20} color="#888" style={styles.inputIcon} />
           <TextInput
@@ -217,7 +212,6 @@ const SignUpScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Confirm Password Input */}
         <View style={styles.inputWrapper}>
           <Ionicons name="lock-closed-outline" size={20} color="#888" style={styles.inputIcon} />
           <TextInput
@@ -236,7 +230,6 @@ const SignUpScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Terms of Service Agreement */}
         <View style={styles.termsContainer}>
           <TouchableOpacity
             style={styles.termsCheckboxContainer}
@@ -257,7 +250,6 @@ const SignUpScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Sign Up Button */}
         <TouchableOpacity 
           style={[styles.signUpBtn, loading && styles.signUpBtnDisabled]} 
           onPress={handleRegister}
@@ -272,7 +264,6 @@ const SignUpScreen = ({ navigation }) => {
           )}
         </TouchableOpacity>
 
-        {/* OR CONTINUE WITH */}
         <Text style={styles.orText}>OR CONTINUE WITH</Text>
         <View style={styles.socialRow}>
           <TouchableOpacity style={styles.socialBtn} disabled={loading}>
@@ -286,7 +277,6 @@ const SignUpScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Sign In Link */}
         <View style={styles.signInRow}>
           <Text style={styles.signInText}>Already have an account? </Text>
           <TouchableOpacity onPress={handleSignIn} disabled={loading}>
@@ -447,7 +437,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
-  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

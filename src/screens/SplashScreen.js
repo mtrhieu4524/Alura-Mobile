@@ -13,14 +13,12 @@ export default function SplashScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Các vòng tròn trang trí */}
       <View style={[styles.circle, styles.circle1]} />
       <View style={[styles.circle, styles.circle2]} />
       <View style={[styles.circle, styles.circle3]} />
       <View style={[styles.circle, styles.circle4]} />
       <View style={[styles.circle, styles.circle5]} />
 
-      {/* Logo */}
       <View style={styles.logoContainer}>
         <Image source={require('../../assets/logoapp.png')} style={styles.logo} resizeMode="contain" />
       </View>
@@ -57,34 +55,34 @@ const styles = StyleSheet.create({
     height: CIRCLE_SIZE * 1.2,
     left: -CIRCLE_SIZE * 0.2,
     top: height * 0.12,
-    backgroundColor: '#F7A8A0', // hồng đậm
+    backgroundColor: '#F7A8A0', 
   },
   circle2: {
     width: CIRCLE_SIZE * 0.25,
     height: CIRCLE_SIZE * 0.25,
     left: width * 0.7,
     top: height * 0.13,
-    backgroundColor: '#FFD166', // vàng đậm
+    backgroundColor: '#FFD166', 
   },
   circle3: {
     width: CIRCLE_SIZE * 0.18,
     height: CIRCLE_SIZE * 0.18,
     left: width * 0.15,
     top: height * 0.28,
-    backgroundColor: '#8D7BE1', // tím đậm
+    backgroundColor: '#8D7BE1', 
   },
   circle4: {
     width: CIRCLE_SIZE * 0.18,
     height: CIRCLE_SIZE * 0.18,
     left: width * 0.7,
     top: height * 0.6,
-    backgroundColor: '#8D7BE1', // tím đậm
+    backgroundColor: '#8D7BE1', 
   },
   circle5: {
     width: CIRCLE_SIZE * 0.18,
     height: CIRCLE_SIZE * 0.18,
     left: width * 0.1,
     top: height * 0.75,
-    backgroundColor: '#F7A8A0', // hồng đậm
+    backgroundColor: '#F7A8A0', 
   },
 }); 

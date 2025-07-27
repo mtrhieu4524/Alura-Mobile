@@ -5,8 +5,8 @@ import { colors, dimensions, typography } from '../../constants';
 export default function Button({
   title,
   onPress,
-  variant = 'primary', // primary, secondary, outline, ghost
-  size = 'medium', // small, medium, large
+  variant = 'primary', 
+  size = 'medium', 
   disabled = false,
   loading = false,
   style,
@@ -74,23 +74,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: dimensions.paddingLarge,
   },
   
-  // Variants - Cập nhật màu theo website
   primaryButton: {
-    backgroundColor: colors.buttonPrimary, // Đen như website
+    backgroundColor: colors.buttonPrimary, 
   },
   secondaryButton: {
-    backgroundColor: colors.backgroundSecondary, // Cream
+    backgroundColor: colors.backgroundSecondary, 
   },
   outlineButton: {
     backgroundColor: colors.transparent,
     borderWidth: 1,
-    borderColor: colors.buttonPrimary, // Đen
+    borderColor: colors.buttonPrimary, 
   },
   ghostButton: {
     backgroundColor: colors.transparent,
   },
   
-  // Sizes
+  
   smallButton: {
     height: dimensions.buttonSmall,
     paddingHorizontal: dimensions.paddingMedium,
@@ -103,32 +102,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: dimensions.paddingXLarge,
   },
   
-  // Disabled
+  
   disabledButton: {
     opacity: 0.5,
   },
   
-  // Text styles
+  
   text: {
     fontWeight: typography.fontWeightBold,
     textAlign: 'center',
   },
   
-  // Text variants - Cập nhật màu text
   primaryText: {
-    color: colors.white, // Trắng trên nền đen
+    color: colors.white, 
   },
   secondaryText: {
-    color: colors.textPrimary, // Đen trên nền cream
+    color: colors.textPrimary, 
   },
   outlineText: {
-    color: colors.buttonPrimary, // Đen
+    color: colors.buttonPrimary, 
   },
   ghostText: {
-    color: colors.buttonPrimary, // Đen
+    color: colors.buttonPrimary, 
   },
   
-  // Text sizes
+  
   smallText: {
     fontSize: typography.fontSizeMedium,
   },
@@ -139,7 +137,7 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSizeXLarge,
   },
   
-  // Disabled text
+  
   disabledText: {
     opacity: 0.6,
   },

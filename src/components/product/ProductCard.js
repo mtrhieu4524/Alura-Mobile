@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { StarRating } from '../common';
 import { colors, dimensions, typography } from '../../constants';
@@ -10,19 +10,26 @@ export default function ProductCard({
   showRating = true,
   showBrand = true 
 }) {
-  // Handle both URL images (from API) and local assets
+  const [imageError, setImageError] = useState(false);
+
   const getImageSource = () => {
+    if (imageError) {
+      return require('../../../assets/product1.png');
+    }
+
     if (product.image) {
-      // If it's a string (URL), use { uri: ... }
       if (typeof product.image === 'string') {
         return { uri: product.image };
       }
-      // If it's a local asset (require()), use directly
       return product.image;
     }
     
-    // Fallback to a placeholder if no image
-    return require('../../../assets/product1.png'); // Default placeholder
+    return require('../../../assets/product1.png'); 
+  };
+
+  const handleImageError = () => {
+    console.log('⚠️ Error loading image for product:', product.name, 'URL:', product.image);
+    setImageError(true);
   };
 
   return (
@@ -32,13 +39,27 @@ export default function ProductCard({
           source={getImageSource()} 
           style={styles.image}
           defaultSource={require('../../../assets/product1.png')}
-          onError={() => console.log('Error loading image:', product.image)}
+          onError={handleImageError}
+          resizeMode="cover"
         />
         
-        {/* New/Bestseller badges */}
         {product.isBestseller && (
           <View style={[styles.badge, styles.bestsellerBadge]}>
             <Text style={styles.badgeText}>Hot</Text>
+          </View>
+        )}
+
+        {product.stock !== undefined && product.stock <= 0 && (
+          <View style={styles.soldOutBadge}>
+            <Text style={styles.soldOutText}>Sold Out</Text>
+          </View>
+        )}
+
+        {product.stock !== undefined && product.stock > 0 && (
+          <View style={styles.stockLabel}>
+            <Text style={styles.stockLabelText}>
+              {product.stock} Left
+            </Text>
           </View>
         )}
       </View>
@@ -49,31 +70,23 @@ export default function ProductCard({
         )}
         
         <Text style={styles.name} numberOfLines={2}>
-          {product.name}
+          {product.name || 'Sản phẩm không tên'}
         </Text>
         
-        {showRating && product.rating && (
+        {showRating && (
           <View style={styles.ratingContainer}>
-            <StarRating rating={product.rating} size={14} />
-            <Text style={styles.ratingText}>{product.rating}</Text>
+            <StarRating rating={product.rating || 0} size={12} />
+            <Text style={styles.ratingText}>({product.rating || 0})</Text>
           </View>
         )}
         
         <View style={styles.priceContainer}>
-          <Text style={styles.price} numberOfLines={1}>
-            {typeof product.price === 'number' 
-              ? product.price.toLocaleString('vi-VN') + ' VND'
-              : product.price
-            }
+          <Text style={styles.price}>
+            {(product.price || 0).toLocaleString('vi-VN')} VND
           </Text>
-          
-          {/* Stock indicator */}
-          {product.stock !== undefined && (
-            <Text style={[
-              styles.stockText, 
-              product.stock > 0 ? styles.inStock : styles.outOfStock
-            ]} numberOfLines={1}>
-              {product.stock > 0 ? `Còn ${product.stock}` : 'Hết hàng'}
+          {product.originalPrice && product.originalPrice > product.price && (
+            <Text style={styles.originalPrice}>
+              {product.originalPrice.toLocaleString('vi-VN')} VND
             </Text>
           )}
         </View>
@@ -89,7 +102,7 @@ const styles = StyleSheet.create({
     padding: dimensions.paddingMedium,
     marginRight: dimensions.marginMedium,
     width: dimensions.productCardWidth,
-    minHeight: 280, // Fixed minimum height for consistency
+    minHeight: 280, 
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -100,7 +113,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: '100%',
-    height: 140, // Fixed height for image container
+    height: 140, 
     borderRadius: dimensions.borderRadiusMedium,
     overflow: 'hidden',
     marginBottom: dimensions.marginMedium,
@@ -134,8 +147,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'space-between', // Distribute content evenly
-    height: 120, // Fixed height for content area
+    justifyContent: 'space-between', 
+    height: 120, 
   },
   brand: {
     fontSize: typography.fontSizeSmall,
@@ -143,21 +156,21 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: typography.letterSpacingWide,
-    height: 16, // Fixed height for brand
+    height: 16, 
   },
   name: {
     fontSize: typography.fontSizeNormal,
     fontWeight: typography.fontWeightMedium,
     color: colors.textPrimary,
     lineHeight: typography.lineHeightNormal * typography.fontSizeNormal,
-    height: 40, // Fixed height for 2 lines of text
+    height: 40, 
     marginBottom: 8,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
-    height: 20, // Fixed height for rating
+    height: 20, 
   },
   ratingText: {
     fontSize: typography.fontSizeSmall,
@@ -168,7 +181,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    minHeight: 24, // Minimum height for price container
+    minHeight: 24, 
   },
   price: {
     fontSize: typography.fontSizeLarge,
@@ -176,15 +189,44 @@ const styles = StyleSheet.create({
     color: colors.accent,
     flex: 1,
   },
-  stockText: {
+  originalPrice: {
     fontSize: typography.fontSizeSmall,
-    fontWeight: typography.fontWeightMedium,
-    marginLeft: 4,
+    color: colors.textSecondary,
+    textDecorationLine: 'line-through',
+    marginLeft: 8,
   },
-  inStock: {
-    color: colors.success,
+  soldOutBadge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: dimensions.borderRadiusMedium,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
   },
-  outOfStock: {
-    color: colors.error,
+  soldOutText: {
+    fontSize: typography.fontSizeLarge,
+    fontWeight: typography.fontWeightBold,
+    color: colors.white,
+    textAlign: 'center',
+  },
+  stockLabel: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: colors.success,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    zIndex: 2,
+  },
+  stockLabelText: {
+    fontSize: typography.fontSizeSmall,
+    fontWeight: typography.fontWeightBold,
+    color: colors.white,
+    textAlign: 'center',
   },
 }); 

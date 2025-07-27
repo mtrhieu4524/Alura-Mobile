@@ -20,7 +20,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
   ).current;
 
   useEffect(() => {
-    // Animate icon scales and colors
+    
     animatedValues.forEach((animValue, index) => {
       Animated.spring(animValue, {
         toValue: state.index === index ? 1 : 0,
@@ -104,12 +104,12 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
           const iconScale = animatedValues[index].interpolate({
             inputRange: [0, 1],
-            outputRange: [1, 1.15],
+            outputRange: [1, 1.05], 
           });
 
           const iconTranslateY = animatedValues[index].interpolate({
             inputRange: [0, 1],
-            outputRange: [0, -2],
+            outputRange: [0, -1], 
           });
 
           const labelOpacity = animatedValues[index].interpolate({
@@ -144,7 +144,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
                 {route.name === 'VisualSearch' ? (
                   <View style={styles.cameraTabContainer}>
                     <LinearGradient
-                      colors={isFocused ? ['#667eea', '#764ba2'] : ['#f8f9fa', '#e9ecef']}
+                      colors={isFocused ? ['#f4b798', '#FF8E53'] : ['#f8f9fa', '#e9ecef']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.cameraTabGradient}
@@ -157,14 +157,11 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
                     </LinearGradient>
                   </View>
                 ) : (
-                  <View style={[
-                    styles.iconContainer,
-                    isFocused && styles.activeIconContainer
-                  ]}>
+                  <View style={styles.iconContainer}>
                     <Ionicons
                       name={getTabIcon(route.name, isFocused)}
                       size={24}
-                      color={isFocused ? '#667eea' : colors.textSecondary}
+                      color={isFocused ? '#f4b798' : colors.textSecondary}
                     />
                   </View>
                 )}
@@ -173,7 +170,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
                   style={[
                     styles.tabLabel,
                     {
-                      color: isFocused ? '#667eea' : colors.textSecondary,
+                      color: isFocused ? '#f4b798' : colors.textSecondary,
                       opacity: labelOpacity,
                     },
                   ]}
@@ -181,18 +178,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
                   {getTabLabel(route.name)}
                 </Animated.Text>
               </Animated.View>
-
-              {/* Active indicator dot */}
-              {isFocused && (
-                <Animated.View
-                  style={[
-                    styles.activeDot,
-                    {
-                      opacity: animatedValues[index],
-                    },
-                  ]}
-                />
-              )}
             </TouchableOpacity>
           );
         })}
@@ -248,9 +233,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
   },
-  activeIconContainer: {
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-  },
   tabLabel: {
     fontSize: typography.sizes.xSmall,
     fontWeight: typography.weights.medium,
@@ -259,6 +241,7 @@ const styles = StyleSheet.create({
   },
   cameraTabContainer: {
     position: 'relative',
+  
   },
   cameraTabGradient: {
     width: 40,
@@ -269,11 +252,12 @@ const styles = StyleSheet.create({
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 2, 
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.2, 
+    shadowRadius: 4, 
+    elevation: 4,
+    overflow: 'hidden',
   },
   activeDot: {
     position: 'absolute',
@@ -281,7 +265,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#667eea',
+    backgroundColor: '#f4b798', 
   },
 });
 

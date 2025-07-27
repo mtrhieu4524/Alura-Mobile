@@ -9,28 +9,20 @@ const { width } = Dimensions.get('window');
 const bannerData = [
   {
     id: 1,
-    title: 'FACIAL\nCOSMETICS',
+    title: 'COSMETICS',
     subtitle: 'C L A S S I C   C O S M E T I C',
     buttonText: 'SHOP THIS CATEGORY',
     image: require('../../../assets/facialcosmetics.png'),
-    category: 'makeup'
+    category: 'cosmetics'
   },
   {
     id: 2,
-    title: 'SKIN\nCARE',
+    title: 'MEDICAL &\nTREATMENT',
     subtitle: 'C L A S S I C   C O S M E T I C',
     buttonText: 'SHOP THIS CATEGORY',
     image: require('../../../assets/skincare.png'),
-    category: 'skincare'
+    category: 'treatments'
   },
-  {
-    id: 3,
-    title: 'PURE\nFRAGRANCE',
-    subtitle: 'C L A S S I C   C O S M E T I C',
-    buttonText: 'SHOP THIS CATEGORY',
-    image: require('../../../assets/purefragrance.png'),
-    category: 'fragrance'
-  }
 ];
 
 export default function BannerSlider() {
@@ -55,7 +47,10 @@ export default function BannerSlider() {
   };
 
   const navigateToCategory = (category) => {
-    navigation.navigate('Shop', { category });
+    navigation.navigate('MainTabs', { 
+      screen: 'Shop',
+      params: { category }
+    });
   };
 
   return (

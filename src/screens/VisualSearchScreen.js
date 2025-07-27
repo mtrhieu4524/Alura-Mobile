@@ -24,7 +24,7 @@ const VisualSearchScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
 
-  // Request camera permissions
+
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -41,7 +41,7 @@ const VisualSearchScreen = ({ navigation }) => {
     return true;
   };
 
-  // Pick image from gallery
+
   const pickImageFromGallery = async () => {
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
@@ -63,13 +63,13 @@ const VisualSearchScreen = ({ navigation }) => {
       console.error('Error picking image:', error);
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Không thể chọn hình ảnh',
+        text1: 'Error',
+        text2: 'Cannot select image',
       });
     }
   };
 
-  // Take photo with camera
+
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
@@ -100,29 +100,29 @@ const VisualSearchScreen = ({ navigation }) => {
       console.error('Error taking photo:', error);
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Không thể chụp ảnh',
+        text1: 'Error',
+        text2: 'Cannot take photo',
       });
     }
   };
 
-  // Handle image URL input
+
   const handleUrlSubmit = () => {
     if (!imageUrl.trim()) {
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
+        text1: 'Error',
         text2: 'Please enter the image URL',
       });
       return;
     }
 
-    // Validate URL format
+
     const urlPattern = /^(https?:\/\/).*\.(jpg|jpeg|png|gif|bmp|webp)(\?.*)?$/i;
     if (!urlPattern.test(imageUrl)) {
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
+        text1: 'Error',
         text2: 'Invalid URL. Please enter the image URL (jpg, png, etc.)',
       });
       return;
@@ -132,12 +132,12 @@ const VisualSearchScreen = ({ navigation }) => {
     setShowUrlInput(false);
   };
 
-  // Search for products
+
   const searchProducts = async () => {
     if (!selectedImage) {
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
+        text1: 'Error',
         text2: 'Please select an image to search',
       });
       return;
@@ -149,7 +149,7 @@ const VisualSearchScreen = ({ navigation }) => {
       const formData = new FormData();
       
       if (selectedImage.uri.startsWith('http')) {
-        // Handle URL image
+
         const response = await fetch(selectedImage.uri);
         if (!response.ok) throw new Error('Cannot load image from URL');
         
@@ -160,7 +160,7 @@ const VisualSearchScreen = ({ navigation }) => {
           name: 'image.jpg'
         });
       } else {
-        // Handle local image
+
         formData.append('imgUrls', {
           uri: selectedImage.uri,
           type: 'image/jpeg',
@@ -168,7 +168,7 @@ const VisualSearchScreen = ({ navigation }) => {
         });
       }
 
-      // Use productService for API call
+
       const response = await productService.findProductsByImage(formData, {
         pageIndex: 1,
         pageSize: 20
@@ -200,7 +200,7 @@ const VisualSearchScreen = ({ navigation }) => {
     }
   };
 
-  // Remove selected image
+
   const removeImage = () => {
     setSelectedImage(null);
     setImageUrl('');
@@ -209,7 +209,7 @@ const VisualSearchScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
-        {/* Header */}
+
         <View style={styles.header}>
           <Text style={styles.title}>Visual Search</Text>
           <Text style={styles.subtitle}>
@@ -217,12 +217,12 @@ const VisualSearchScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        {/* Image Upload Section */}
+
         <View style={styles.uploadSection}>
           <Text style={styles.sectionTitle}>Upload product image</Text>
           
           {selectedImage ? (
-            /* Image Preview */
+
             <View style={styles.imagePreviewContainer}>
               <TouchableOpacity style={styles.removeButton} onPress={removeImage}>
                 <Ionicons name="close-circle" size={24} color={colors.error} />
@@ -230,7 +230,7 @@ const VisualSearchScreen = ({ navigation }) => {
               <Image source={{ uri: selectedImage.uri }} style={styles.previewImage} />
             </View>
           ) : (
-            /* Upload Placeholder */
+
             <View style={styles.uploadPlaceholder}>
               <Ionicons name="image-outline" size={64} color={colors.textSecondary} />
               <Text style={styles.placeholderText}>
@@ -239,50 +239,23 @@ const VisualSearchScreen = ({ navigation }) => {
             </View>
           )}
 
-          {/* Action Buttons */}
+
           {!selectedImage && (
             <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.actionButton} onPress={takePhoto}>
-                <Ionicons name="camera-outline" size={24} color={colors.accent} />
-                <Text style={styles.actionButtonText}>Take photo</Text>
-              </TouchableOpacity>
+
               
               <TouchableOpacity style={styles.actionButton} onPress={pickImageFromGallery}>
                 <Ionicons name="images-outline" size={24} color={colors.accent} />
                 <Text style={styles.actionButtonText}>Library</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity 
-                style={styles.actionButton} 
-                onPress={() => setShowUrlInput(!showUrlInput)}
-              >
-                <Ionicons name="link-outline" size={24} color={colors.accent} />
-                <Text style={styles.actionButtonText}>URL</Text>
-              </TouchableOpacity>
             </View>
           )}
 
-          {/* URL Input */}
-          {showUrlInput && (
-            <View style={styles.urlInputContainer}>
-              <View style={styles.urlInputWrapper}>
-                <TextInput
-                  style={styles.urlInput}
-                  placeholder="Enter image URL (jpg, png, ...)"
-                  value={imageUrl}
-                  onChangeText={setImageUrl}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <TouchableOpacity style={styles.urlSubmitButton} onPress={handleUrlSubmit}>
-                  <Ionicons name="checkmark" size={20} color={colors.white} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+
         </View>
 
-        {/* Search Button */}
+
         {selectedImage && (
           <View style={styles.searchSection}>
             <TouchableOpacity
@@ -302,7 +275,7 @@ const VisualSearchScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* How it works */}
+
         <View style={styles.howItWorksSection}>
           <Text style={styles.sectionTitle}>How it works</Text>
           <View style={styles.stepContainer}>
@@ -335,7 +308,7 @@ const VisualSearchScreen = ({ navigation }) => {
           </View>
         </View>
         
-        {/* Bottom spacing */}
+
         <View style={styles.bottomSpacing} />
       </ScrollView>
     </SafeAreaView>
@@ -528,7 +501,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   bottomSpacing: {
-    height: 120, // Space for floating tab bar
+    height: 120, 
   },
 });
 

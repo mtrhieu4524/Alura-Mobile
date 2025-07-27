@@ -1,18 +1,20 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, SafeAreaView, Alert, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { colors } from '../constants';
 import Toast from 'react-native-toast-message';
+import productService from '../services/productService'; 
 
 export default function CartScreen() {
   const navigation = useNavigation();
   const { cart, removeFromCart, updateQuantity, fetchCartFromAPI, loading } = useCart();
   const { isLoggedIn } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch cart from API when screen mounts (if user is logged in)
+
   useEffect(() => {
     const loadCartFromAPI = async () => {
       if (isLoggedIn) {
@@ -20,8 +22,8 @@ export default function CartScreen() {
         if (!result.success && result.message !== 'No authentication token') {
           Toast.show({
             type: 'error',
-            text1: 'Lỗi',
-            text2: result.message || 'Không thể tải giỏ hàng',
+            text1: 'Error',
+            text2: result.message || 'Cannot load cart',
           });
         }
       }
@@ -30,9 +32,71 @@ export default function CartScreen() {
     loadCartFromAPI();
   }, [isLoggedIn]);
 
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isLoggedIn) {
+        console.log('📱 Cart screen focused - refreshing cart...');
+
+        const refreshCart = async () => {
+          const result = await fetchCartFromAPI();
+          if (!result.success && result.message !== 'No authentication token') {
+            console.log('Auto refresh failed:', result.message);
+          }
+        };
+        refreshCart();
+      }
+    }, [isLoggedIn])
+  );
+
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    
+    if (!isLoggedIn) {
+
+      setTimeout(() => {
+        setRefreshing(false);
+        Toast.show({
+          type: 'info',
+          text1: 'Notification',
+          text2: 'Please login to sync cart',
+        });
+      }, 1000); 
+      return;
+    }
+    
+    try {
+      const result = await fetchCartFromAPI();
+      if (!result.success && result.message !== 'No authentication token') {
+        Toast.show({
+          type: 'error', 
+          text1: 'Error',
+          text2: result.message || 'Cannot load cart',
+        });
+      } else if (result.success) {
+
+        Toast.show({
+          type: 'success',
+          text1: 'Update successful',
+          text2: 'Cart has been synced',
+        });
+      }
+    } catch (error) {
+
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Cannot refresh cart',
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  // Handle quantity update with loading
+
   const handleUpdateQuantity = async (itemId, newQuantity) => {
     try {
       await updateQuantity(itemId, newQuantity);
@@ -42,7 +106,7 @@ export default function CartScreen() {
     }
   };
 
-  // Handle remove item with loading
+
   const handleRemoveItem = async (itemId) => {
     try {
       await removeFromCart(itemId);
@@ -51,104 +115,235 @@ export default function CartScreen() {
     }
   };
 
-  // Handle both URL images (from API) and local assets
   const getImageSource = (product) => {
-    console.log('getImageSource called with:', product.image);
-    
     if (product.image) {
-      // If it's a string (URL), use { uri: ... }
       if (typeof product.image === 'string') {
-        console.log('Using image URL:', product.image);
         return { uri: product.image };
       }
-      // If it's a local asset (require()), use directly
       return product.image;
     }
     
-    // Fallback to a placeholder if no image
-    console.log('No image found, using placeholder');
-    return require('../../assets/product1.png'); // Default placeholder
+    return require('../../assets/product1.png'); 
   };
 
-  // Handle checkout with authentication check
-  const handleCheckout = () => {
+  const handleImageError = (item) => {
+    console.log('Error loading cart image for:', item.name, 'URL:', item.image);
+  };
+
+  const handleProductPress = (item) => {
+    console.log('Navigating to product detail for:', item.name);
+    console.log('Cart item data:', {
+      id: item.id,
+      productId: item.productId,
+      _id: item._id,
+      name: item.name,
+      image: item.image
+    });
+    
+    let productId = null;
+    
+    if (typeof item.productId === 'string') {
+      productId = item.productId;
+    }
+    else if (item.productId && typeof item.productId === 'object' && item.productId._id) {
+      productId = item.productId._id;
+    }
+    else if (item._id) {
+      productId = item._id;
+    }
+    else if (item.id) {
+      productId = item.id;
+    }
+    
+    console.log('Extracted productId:', productId);
+    console.log('ProductId type:', typeof productId);
+    
+    if (!productId) {
+      console.log('No valid productId found in cart item:', item);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Cannot open product detail page - missing product information',
+      });
+      return;
+    }
+    
+    console.log('Using productId for navigation:', productId);
+    
+    try {
+      navigation.navigate('ProductDetail', { 
+        productId: productId,
+        fallbackProduct: item 
+      });
+    } catch (navigationError) {
+      console.log('Navigation error:', navigationError);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Cannot open product detail page',
+      });
+    }
+  };
+
+  const handleCheckout = async () => {
     if (!isLoggedIn) {
       Alert.alert(
-        'Yêu cầu đăng nhập',
-        'Bạn cần đăng nhập để tiếp tục thanh toán',
+        'Login required',
+        'You need to login to continue payment',
         [
           {
-            text: 'Hủy',
+            text: 'Cancel',
             style: 'cancel',
           },
           {
-            text: 'Đăng nhập',
+            text: 'Login',
             onPress: () => navigation.navigate('Login'),
           },
         ]
       );
       return;
     }
-    navigation.navigate('Checkout');
+
+    try {
+      console.log('Checking hidden products before checkout...');
+      
+      for (const item of cart) {
+        let productId = null;
+        if (typeof item.productId === 'string') {
+          productId = item.productId;
+        } else if (item.productId && typeof item.productId === 'object' && item.productId._id) {
+          productId = item.productId._id;
+        } else if (item._id) {
+          productId = item._id;
+        } else if (item.id) {
+          productId = item.id;
+        }
+
+        if (!productId) {
+          console.log('No productId found for item:', item.name);
+          Toast.show({
+            type: 'error',
+            text1: 'Invalid product',
+            text2: `Product "${item.name}" has invalid data. Please remove it from the cart.`,
+          });
+          return;
+        }
+
+        console.log(`Checking product: ${item.name} (ID: ${productId})`);
+        
+        const productResponse = await productService.getProductById(productId);
+        
+        if (!productResponse.success) {
+          console.log(`Product ${item.name} is not available:`, productResponse.error);
+          Toast.show({
+            type: 'error',
+            text1: 'Product not available',
+            text2: `Product "${item.name}" is not available. Please remove it from the cart.`,
+          });
+          return;
+        }
+
+        const product = productResponse.product;
+        if (product && product.hidden === true) {
+          console.log(`Product ${item.name} has been hidden`);
+          Toast.show({
+            type: 'error',
+            text1: 'Product not available',
+            text2: `Product "${item.name}" has been hidden from the store. Please remove it from the cart.`,
+          });
+          return;
+        }
+
+        if (product && product.stock !== undefined && product.stock <= 0) {
+          console.log(`Product ${item.name} is sold out (stock: ${product.stock})`);
+          Toast.show({
+            type: 'error',
+            text1: 'Product sold out',
+            text2: `Product "${item.name}" is sold out. Please remove it from the cart.`,
+          });
+          return;
+        }
+
+        console.log(`Product ${item.name} is available`);
+      }
+
+      console.log('All products in the cart are available, proceeding to checkout');
+      navigation.navigate('Checkout');
+      
+    } catch (error) {
+      console.log('Product validation error:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Validation error',
+        text2: 'Cannot check product status. Please try again.',
+      });
+    }
   };
 
-  // Loading state
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Cart</Text>
         </View>
         
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={styles.loadingText}>Đang tải giỏ hàng...</Text>
+          <Text style={styles.loadingText}>loading cart...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Empty cart state
   if (cart.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Cart</Text>
         </View>
         
-        <View style={styles.emptyContainer}>
-          <Ionicons name="cart-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyTitle}>Cart is empty</Text>
-          <Text style={styles.emptySubtitle}>Please add products to your cart to continue shopping</Text>
-          <TouchableOpacity 
-            style={styles.continueShoppingBtn}
-            onPress={() => navigation.navigate('Shop')}
-          >
-            <Text style={styles.continueShoppingText}>Continue shopping</Text>
-          </TouchableOpacity>
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.emptyScrollContainer}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              colors={[colors.accent]} 
+              tintColor={colors.accent}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.emptyContainer}>
+            <Ionicons name="cart-outline" size={80} color="#ccc" />
+            <Text style={styles.emptyTitle}>Cart is empty</Text>
+            <Text style={styles.emptySubtitle}>Please add products to your cart to continue shopping</Text>
+            <TouchableOpacity 
+              style={styles.continueShoppingBtn}
+              onPress={() => navigation.navigate('Shop')}
+            >
+              <Text style={styles.continueShoppingText}>Continue shopping</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Cart</Text>
       </View>
-      
-      {/* Cart List */}
+
       <FlatList
         data={cart}
-        keyExtractor={item => item.id}
+        keyExtractor={(item, index) => item.id || item._id || `cart-item-${index}`}
         style={styles.listContainer}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
-          // Debug log for each cart item
+          
           console.log('Rendering cart item:', {
             id: item.id,
             name: item.name,
@@ -160,25 +355,34 @@ export default function CartScreen() {
           
           return (
             <View style={styles.cartItem}>
-              <Image 
-                source={getImageSource(item)} 
-                style={styles.itemImage} 
-                defaultSource={require('../../assets/product1.png')}
-                onError={(error) => {
-                  console.log('Error loading cart image for:', item.name, 'Image URL:', item.image, 'Error:', error.nativeEvent.error);
-                }}
-              />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.itemName}>{item.name || 'Sản phẩm không tên'}</Text>
-                {item.brand && item.brand !== 'Unknown Brand' && (
-                  <Text style={styles.itemBrand}>{item.brand}</Text>
-                )}
-                {item.productType && item.productType !== 'Unknown Type' && (
-                  <Text style={styles.itemType}>Type: {item.productType}</Text>
-                )}
-                {item.volume && <Text style={styles.itemVolume}>Volume: {item.volume}</Text>}
-                <Text style={styles.itemPrice}>{(item.price || 0).toLocaleString('vi-VN')} VND</Text>
-              </View>
+              
+              <TouchableOpacity 
+                onPress={() => handleProductPress(item)}
+                style={styles.productInfoContainer}
+                activeOpacity={0.7}
+              >
+                <Image 
+                  source={getImageSource(item)} 
+                  style={styles.itemImage} 
+                  defaultSource={require('../../assets/product1.png')}
+                  onError={(error) => {
+                    handleImageError(item);
+                  }}
+                />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.itemName}>{item.name || 'Sản phẩm không tên'}</Text>
+                  {item.brand && item.brand !== 'Unknown Brand' && (
+                    <Text style={styles.itemBrand}>{item.brand}</Text>
+                  )}
+                  {item.productType && item.productType !== 'Unknown Type' && (
+                    <Text style={styles.itemType}>Type: {item.productType}</Text>
+                  )}
+                  {item.volume && <Text style={styles.itemVolume}>Volume: {item.volume}</Text>}
+                  <Text style={styles.itemPrice}>{(item.price || 0).toLocaleString('vi-VN')} VND</Text>
+                </View>
+              </TouchableOpacity>
+              
+              
               <View style={styles.qtyBox}>
                 <TouchableOpacity onPress={() => handleUpdateQuantity(item.id, item.quantity - 1)} style={styles.qtyBtn}>
                   <Ionicons name="remove" size={18} color="#888" />
@@ -207,9 +411,17 @@ export default function CartScreen() {
             </View>
           </View>
         }
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[colors.accent]} 
+            tintColor={colors.accent}
+          />
+        }
       />
       
-      {/* Checkout Button - Fixed at bottom */}
+      
       <View style={styles.checkoutBar}>
         <Text style={styles.checkoutPrice}>{subtotal.toLocaleString('vi-VN')} VND</Text>
         <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout}>
@@ -243,7 +455,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 20, // Extra space before checkout bar
+    paddingBottom: 20, 
   },
   cartItem: {
     flexDirection: 'row',
@@ -259,6 +471,11 @@ const styles = StyleSheet.create({
     elevation: 1,
     borderWidth: 1,
     borderColor: '#f2f2f2',
+  },
+  productInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   itemImage: {
     width: 60,
@@ -356,7 +573,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    paddingBottom: 100, // Space for floating tab bar
+    paddingBottom: 100, 
     borderTopWidth: 1,
     borderTopColor: '#eee',
     backgroundColor: '#fff',
@@ -383,9 +600,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   emptyTitle: {
     fontSize: 20,
@@ -418,5 +635,11 @@ const styles = StyleSheet.create({
     color: '#888',
     fontSize: 15,
     marginTop: 10,
+  },
+  emptyScrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 100, 
   },
 }); 

@@ -1,27 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { authService } from '../services';
 import { colors } from '../constants';
 import Toast from 'react-native-toast-message';
 
 const { width, height } = Dimensions.get('window');
 
-export default function ForgotPasswordScreen() {
-  const [email, setEmail] = useState('');
+export default function ResetPasswordScreen() {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
+  const route = useRoute();
+  const email = route.params?.email || '';
+  const code = route.params?.code || '';
 
-  const handleSendEmail = async () => {
-    if (!email.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập email!');
+  useEffect(() => {
+    if (!email || !code) {
+      navigation.navigate('Login');
+    }
+  }, [email, code, navigation]);
+
+  const handleResetPassword = async () => {
+    if (!newPassword.trim() || !confirmPassword.trim()) {
+      Alert.alert('Error', 'Please fill in all information!');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters!');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'Password does not match!');
       return;
     }
 
     setLoading(true);
     try {
-      const result = await authService.forgotPassword(email.trim());
+      const result = await authService.resetPassword(email, code, newPassword);
       
       if (result.success) {
         Toast.show({
@@ -29,7 +51,7 @@ export default function ForgotPasswordScreen() {
           text1: 'Success',
           text2: result.message
         });
-        navigation.navigate('VerifyCode', { email: email.trim() });
+        navigation.navigate('Login');
       } else {
         Toast.show({
           type: 'error',
@@ -38,8 +60,8 @@ export default function ForgotPasswordScreen() {
         });
       }
     } catch (error) {
-      console.error('Forgot password error:', error);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+      console.error('Reset password error:', error);
+      Alert.alert('Error', 'An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -60,44 +82,54 @@ export default function ForgotPasswordScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.title}>Forgot Password</Text>
-        <Text style={styles.subtitle}>Enter your account's email to receive a verify mail for reset password</Text>
+        <Text style={styles.title}>Reset Password</Text>
         
         <View style={styles.inputWrapper}>
-          <Ionicons name="mail-outline" size={20} color="#888" style={styles.inputIcon} />
+          <Ionicons name="lock-closed-outline" size={20} color="#888" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Enter email"
+            placeholder="Enter new password"
             placeholderTextColor="#bbb"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            secureTextEntry={!showNewPassword}
             editable={!loading}
           />
+          <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} disabled={loading}>
+            <Ionicons name={showNewPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#888" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.inputWrapper}>
+          <Ionicons name="lock-closed-outline" size={20} color="#888" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm new password"
+            placeholderTextColor="#bbb"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry={!showConfirmPassword}
+            editable={!loading}
+          />
+          <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} disabled={loading}>
+            <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#888" />
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity 
-          style={[styles.confirmBtn, loading && styles.confirmBtnDisabled]} 
-          onPress={handleSendEmail}
+          style={[styles.resetBtn, loading && styles.resetBtnDisabled]} 
+          onPress={handleResetPassword}
           disabled={loading}
         >
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color="#fff" />
-              <Text style={styles.confirmText}>Đang gửi...</Text>
+              <Text style={styles.resetText}>Updating...</Text>
             </View>
           ) : (
-            <Text style={styles.confirmText}>Confirm</Text>
+            <Text style={styles.resetText}>Reset Password</Text>
           )}
         </TouchableOpacity>
-          
-        <View style={styles.signInRow}>
-          <Text style={styles.signInText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')} disabled={loading}>
-            <Text style={styles.signInLink}>Sign in</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </View>
   );
@@ -140,21 +172,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#222',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#888',
     marginBottom: 32,
-    lineHeight: 20,
+    color: '#222',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F5F6FA',
     borderRadius: 8,
-    marginBottom: 24,
+    marginBottom: 16,
     paddingHorizontal: 12,
     height: 48,
   },
@@ -166,14 +192,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#222',
   },
-  confirmBtn: {
+  resetBtn: {
     backgroundColor: colors.buttonPrimary,
     borderRadius: 8,
     alignItems: 'center',
     paddingVertical: 14,
-    marginBottom: 24,
+    marginTop: 24,
   },
-  confirmBtnDisabled: {
+  resetBtnDisabled: {
     backgroundColor: '#ccc',
     opacity: 0.7,
   },
@@ -181,24 +207,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  confirmText: {
+  resetText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 8,
-  },
-  signInRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  signInText: {
-    color: '#888',
-    fontSize: 14,
-  },
-  signInLink: {
-    color: colors.accent,
-    fontWeight: 'bold',
-    fontSize: 14,
   },
 }); 

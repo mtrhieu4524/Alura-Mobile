@@ -3,10 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class AuthService {
   // Login function
-  async login(email, password) {
+  async login(email, password, rememberMe = false) {
     try {
       const apiUrl = getApiUrl(config.endpoints.auth.login);
-      console.log('Login API URL:', apiUrl); // Debug log
+      console.log('Login API URL:', apiUrl); 
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -16,27 +16,28 @@ class AuthService {
         body: JSON.stringify({ email, password })
       });
 
-      console.log('Login response status:', response); // Debug log
+      console.log('Login response status:', response); 
 
       if (response.status !== 200) {
-        throw new Error('Wrong email or password.');
+        return {
+          success: false,
+          message: 'Wrong email or password.'
+        };
       }
 
       const data = await response.json();
-      console.log('Login response data:', data); // Debug log
+      console.log('Login response data:', data); 
 
-      // Lưu token và user info
+
       await AsyncStorage.setItem('token', data.token);
       await AsyncStorage.setItem('user', data.accountId);
 
-      // Lưu remember me info nếu được chọn
-      // if (rememberMe) {
-      //   await AsyncStorage.setItem('rememberEmail', email);
-      //   await AsyncStorage.setItem('rememberPassword', password);
-      // } else {
-      //   await AsyncStorage.removeItem('rememberEmail');
-      //   await AsyncStorage.removeItem('rememberPassword');
-      // }
+
+      if (rememberMe) {
+        await this.saveRememberedCredentials(email, password);
+      } else {
+        await this.clearRememberedCredentials();
+      }
 
       return {
         success: true,
@@ -44,19 +45,19 @@ class AuthService {
         message: 'Login successful.'
       };
     } catch (error) {
-      console.error('Login error o day phai ko ?: ', error); // Debug log
+
       return {
         success: false,
-        message: 'Login failed.'
+        message: 'Wrong email or password.'
       };
     }
   }
 
-  // Register function
+
   async register(name, email, password, phone = '', address = '') {
     try {
       const apiUrl = getApiUrl(config.endpoints.auth.register);
-      console.log('Register API URL:', apiUrl); // Debug log
+      console.log('Register API URL:', apiUrl); 
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -80,15 +81,15 @@ class AuthService {
         message: 'Account created successfully.'
       };
     } catch (error) {
-      console.error('Register error:', error); // Debug log
+
       return {
         success: false,
-        message: error.message || 'Registration failed. Please try again.'
+        message: 'Registration failed.'
       };
     }
   }
 
-  // Get user profile
+
   async getUserProfile(userId) {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -120,7 +121,7 @@ class AuthService {
         message: 'Profile fetched successfully.'
       };
     } catch (error) {
-      console.error('Get profile error:', error);
+
       return {
         success: false,
         message: error.message || 'Failed to fetch profile.'
@@ -128,7 +129,7 @@ class AuthService {
     }
   }
 
-  // Update user profile
+
   async updateUserProfile(userId, profileData) {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -162,7 +163,7 @@ class AuthService {
         message: 'Profile updated successfully.'
       };
     } catch (error) {
-      console.error('Update profile error:', error);
+
       return {
         success: false,
         message: error.message || 'Failed to update profile.'
@@ -170,7 +171,7 @@ class AuthService {
     }
   }
 
-  // Change password
+
   async changePassword(currentPassword, newPassword) {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -207,7 +208,7 @@ class AuthService {
         message: 'Password changed successfully.'
       };
     } catch (error) {
-      console.error('Change password error:', error);
+
       return {
         success: false,
         message: error.message || 'Failed to change password.'
@@ -215,7 +216,7 @@ class AuthService {
     }
   }
 
-  // Logout function
+
   async logout() {
     try {
       await AsyncStorage.multiRemove(['token', 'user']);
@@ -231,7 +232,7 @@ class AuthService {
     }
   }
 
-  // Check if user is logged in
+
   async isLoggedIn() {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -241,7 +242,7 @@ class AuthService {
     }
   }
 
-  // Get saved remember me credentials
+
   async getRememberedCredentials() {
     try {
       const email = await AsyncStorage.getItem('rememberEmail');
@@ -256,7 +257,27 @@ class AuthService {
     }
   }
 
-  // Get current user info
+
+  async saveRememberedCredentials(email, password) {
+    try {
+      await AsyncStorage.setItem('rememberEmail', email);
+      await AsyncStorage.setItem('rememberPassword', password);
+    } catch (error) {
+      console.log('Error saving remembered credentials:', error);
+    }
+  }
+
+
+  async clearRememberedCredentials() {
+    try {
+      await AsyncStorage.removeItem('rememberEmail');
+      await AsyncStorage.removeItem('rememberPassword');
+    } catch (error) {
+      console.log('Error clearing remembered credentials:', error);
+    }
+  }
+
+
   async getCurrentUser() {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -264,6 +285,109 @@ class AuthService {
       return { token, userId };
     } catch (error) {
       return { token: null, userId: null };
+    }
+  }
+
+
+  async forgotPassword(email) {
+    try {
+      const apiUrl = getApiUrl(config.endpoints.auth.forgotPassword);
+      console.log('Forgot password API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email })
+      });
+
+      if (response.ok) {
+        return {
+          success: true,
+          message: 'Check your email for verify code.'
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Email not registered an account.'
+        };
+      }
+    } catch (error) {
+
+      return {
+        success: false,
+        message: 'Something went wrong. Please try again later.'
+      };
+    }
+  }
+
+
+  async verifyResetCode(email, code) {
+    try {
+      const apiUrl = getApiUrl(config.endpoints.auth.verifyResetCode);
+      console.log('Verify reset code API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, code })
+      });
+
+      if (response.ok) {
+        return {
+          success: true,
+          message: 'Code verified successfully.'
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Verify code is incorrect.'
+        };
+      }
+    } catch (error) {
+
+      return {
+        success: false,
+        message: 'Something went wrong. Please try again.'
+      };
+    }
+  }
+
+
+  async resetPassword(email, code, newPassword) {
+    try {
+      const apiUrl = getApiUrl(config.endpoints.auth.resetPassword);
+      console.log('Reset password API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, code, newPassword })
+      });
+
+      if (response.ok) {
+        return {
+          success: true,
+          message: 'Reset password successfully!'
+        };
+      } else {
+        const errorData = await response.json();
+        return {
+          success: false,
+          message: errorData.message || 'Failed to reset password.'
+        };
+      }
+    } catch (error) {
+
+      return {
+        success: false,
+        message: 'Something went wrong. Please try again.'
+      };
     }
   }
 }

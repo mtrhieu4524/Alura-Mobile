@@ -1,7 +1,11 @@
 import { getApiUrl } from '../config/environment';
 
 class ProductService {
-  // Fetch all products with optional pagination and filters
+  getApiUrl(endpoint = '') {
+    const baseUrl = getApiUrl('');
+    return endpoint ? `${baseUrl}/${endpoint}` : baseUrl;
+  }
+
   async getAllProducts(params = {}) {
     try {
       const {
@@ -19,7 +23,6 @@ class ProductService {
         inStock = null
       } = params;
 
-      // Build query parameters
       const queryParams = new URLSearchParams();
       
       if (pageIndex) queryParams.append('pageIndex', pageIndex);
@@ -70,7 +73,6 @@ class ProductService {
     }
   }
 
-  // Get product by ID
   async getProductById(productId) {
     try {
       const url = getApiUrl(`products/${productId}`);
@@ -83,8 +85,19 @@ class ProductService {
         },
       });
 
+      console.log('Product detail response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.log('Product detail error response:', errorText);
+        
+        if (response.status === 404) {
+          throw new Error('Product not found or hidden');
+        } else if (response.status === 403) {
+          throw new Error('Product not available');
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
       }
 
       const data = await response.json();
@@ -96,7 +109,6 @@ class ProductService {
         message: data.message
       };
     } catch (error) {
-      console.error('Error fetching product detail:', error);
       return {
         success: false,
         product: null,
@@ -105,7 +117,6 @@ class ProductService {
     }
   }
 
-  // Search products by name or description
   async searchProducts(searchTerm, params = {}) {
     return this.getAllProducts({
       ...params,
@@ -113,7 +124,6 @@ class ProductService {
     });
   }
 
-  // Get products by category
   async getProductsByCategory(categoryName, params = {}) {
     return this.getAllProducts({
       ...params,
@@ -121,35 +131,40 @@ class ProductService {
     });
   }
 
-  // Transform API product data to match app's expected format
   transformProduct(apiProduct) {
-    // Get the primary image URL
     let imageUrl = null;
     if (apiProduct.imgUrls && apiProduct.imgUrls.length > 0) {
       imageUrl = apiProduct.imgUrls[0];
-      // If the URL doesn't start with http, it might be a relative path
       if (imageUrl && !imageUrl.startsWith('http')) {
-        // Add base URL if needed - adjust this based on your API setup
         const baseUrl = getApiUrl('').replace('/api/', '');
-        imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+        if (imageUrl.startsWith('/')) {
+          imageUrl = `${baseUrl}${imageUrl}`;
+        } else {
+          imageUrl = `${baseUrl}/${imageUrl}`;
+        }
       }
     } else if (apiProduct.imgUrl) {
-      // Fallback to single imgUrl field if exists
       imageUrl = apiProduct.imgUrl;
       if (imageUrl && !imageUrl.startsWith('http')) {
         const baseUrl = getApiUrl('').replace('/api/', '');
-        imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+        if (imageUrl.startsWith('/')) {
+          imageUrl = `${baseUrl}${imageUrl}`;
+        } else {
+          imageUrl = `${baseUrl}/${imageUrl}`;
+        }
       }
     }
 
-    console.log('Transforming product:', apiProduct.name, 'Image URL:', imageUrl);
+    if (!imageUrl && apiProduct.name) {
+      console.log('⚠️ No image found for product:', apiProduct.name);
+    }
 
     return {
       id: apiProduct._id,
       name: apiProduct.name,
       brand: apiProduct.brand?.brandName || 'Unknown',
       price: apiProduct.price,
-      rating: apiProduct.rating || 4.5, // Default rating if not provided
+      rating: apiProduct.rating || 4.5, 
       image: imageUrl,
       imgUrls: apiProduct.imgUrls || [],
       description: apiProduct.description,
@@ -165,25 +180,61 @@ class ProductService {
       keyIngredients: apiProduct.keyIngredients || '',
       instructions: apiProduct.instructions || '',
       isNew: this.isNewProduct(apiProduct.createdAt),
-      isBestseller: apiProduct.rating >= 4.5, // Consider high-rated products as bestsellers
-      // Keep original API data for reference
+      isBestseller: apiProduct.rating >= 4.5, 
       _original: apiProduct
     };
   }
 
-  // Helper function to determine if product is new (within last 30 days)
   isNewProduct(createdAt) {
     if (!createdAt) return false;
-    const createdDate = new Date(createdAt);
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    return createdDate > thirtyDaysAgo;
+    const created = new Date(createdAt);
+    const now = new Date();
+    const diffTime = Math.abs(now - created);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 30;
   }
 
-  // Get unique filter values for dropdowns
+  debugImageUrls(products) {
+    console.log('Image URL Debug Report:');
+    console.log('=============================');
+    
+    let totalProducts = 0;
+    let withImages = 0;
+    let withoutImages = 0;
+    let invalidUrls = 0;
+
+    products.forEach(product => {
+      totalProducts++;
+      
+      if (product.image) {
+        withImages++;
+        if (typeof product.image === 'string') {
+          if (product.image.startsWith('http')) {
+            console.log(`${product.name}: ${product.image}`);
+          } else {
+            invalidUrls++;
+            console.log(`${product.name}: Invalid URL - ${product.image}`);
+          }
+        } else {
+          console.log(`${product.name}: Local asset`);
+        }
+      } else {
+        withoutImages++;
+        console.log(`${product.name}: No image`);
+      }
+    });
+
+    console.log('=============================');
+    console.log(`Summary:`);
+    console.log(`   Total products: ${totalProducts}`);
+    console.log(`   With images: ${withImages}`);
+    console.log(`   Without images: ${withoutImages}`);
+    console.log(`   Invalid URLs: ${invalidUrls}`);
+    console.log('=============================');
+  }
+
   async getFilterOptions() {
     try {
-      // You can implement separate endpoints for these or derive from products
       return {
         categories: ['makeup', 'skincare', 'fragrance', 'haircare'],
         brands: ['Dior', 'Essence', 'Cetaphil', 'L\'Oreal'],
@@ -205,7 +256,6 @@ class ProductService {
     }
   }
 
-  // Find products by image (Visual Search)
   async findProductsByImage(formData, params = {}) {
     try {
       const {
@@ -213,7 +263,6 @@ class ProductService {
         pageSize = 10
       } = params;
 
-      // Build query parameters
       const queryParams = new URLSearchParams({
         pageIndex: pageIndex.toString(),
         pageSize: pageSize.toString(),
@@ -237,7 +286,6 @@ class ProductService {
       const data = await response.json();
       console.log('Visual Search Response:', data);
 
-      // Transform products to app format
       const transformedProducts = data.products ? data.products.map(product => this.transformProduct(product)) : [];
 
       return {

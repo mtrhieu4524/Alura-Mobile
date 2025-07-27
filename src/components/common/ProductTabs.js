@@ -93,7 +93,6 @@ export default function ProductTabs() {
 
   return (
     <View style={styles.container}>
-      {/* Header with Tabs */}
       <View style={styles.header}>
         <View style={styles.tabsContainer}>
           {tabs.map((tab) => (
@@ -120,11 +119,10 @@ export default function ProductTabs() {
         </TouchableOpacity>
       </View>
 
-      {/* Products List */}
       <FlatList
         data={getCurrentProducts()}
         renderItem={renderProduct}
-        keyExtractor={item => item.id}
+        keyExtractor={(item, index) => item.id || item._id || `product-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.productsList}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Modal, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SearchBar } from '../components/common';
@@ -7,280 +7,442 @@ import { ProductCard } from '../components/product';
 import { colors, typography, dimensions } from '../constants';
 import { productService } from '../services';
 
-const categories = [
-  { id: 'all', name: 'Tất cả', icon: 'grid-outline' },
-  { id: 'skincare', name: 'Skincare', icon: 'leaf-outline' },
-  { id: 'makeup', name: 'Makeup', icon: 'color-palette-outline' },
-  { id: 'fragrance', name: 'Nước hoa', icon: 'flower-outline' },
-  { id: 'haircare', name: 'Tóc', icon: 'cut-outline' },
+
+const COSMETICS_CATEGORY_ID = '685f753db792e430e6925dad';
+const TREATMENTS_CATEGORY_ID = '685f755db792e430e6925db0';
+
+
+const tabOptions = [
+  { id: 'cosmetics', name: 'Cosmetics', icon: 'color-palette-outline' },
+  { id: 'treatments', name: 'Medicals & Treatments', icon: 'medical-outline' },
 ];
 
 const sortOptions = [
-  { id: 'popular', name: 'Phổ biến' },
-  { id: 'newest', name: 'Mới nhất' },
-  { id: 'price_low', name: 'Giá: Thấp đến Cao' },
-  { id: 'price_high', name: 'Giá: Cao đến Thấp' },
-  { id: 'rating', name: 'Đánh giá cao nhất' },
+  { id: '', name: 'None' },
+  { id: 'Newest', name: 'Newest' },
+  { id: 'Oldest', name: 'Oldest' },
+  { id: 'Price (Low to High)', name: 'Price ↑' },
+  { id: 'Price (High to Low)', name: 'Price ↓' },
 ];
 
-// Filter options
+
 const sexOptions = [
-  { id: '', name: 'Tất cả' },
-  { id: 'Women', name: 'Nữ' },
-  { id: 'Men', name: 'Nam' },
+  { id: '', name: 'All' },
+  { id: 'Male', name: 'Male' },
+  { id: 'Female', name: 'Female' },
   { id: 'Unisex', name: 'Unisex' },
 ];
 
-const typeOptions = [
-  { id: '', name: 'Tất cả' },
-  // Skincare
-  { id: 'Cleanser', name: 'Sữa rửa mặt' },
-  { id: 'Toner', name: 'Toner' },
-  { id: 'Serum', name: 'Serum' },
-  { id: 'Face Mask', name: 'Mặt nạ' },
-  { id: 'Cream', name: 'Kem dưỡng' },
-  // Body Care
-  { id: 'Body Lotion', name: 'Sữa dưỡng thể' },
-  { id: 'Body Wash', name: 'Sữa tắm' },
-  { id: 'Deodorant', name: 'Lăn khử mùi' },
-  { id: 'Sunscreen', name: 'Kem chống nắng' },
-  // Lip & Nail
-  { id: 'Lip Balm', name: 'Son dưỡng' },
-  { id: 'Lip Stick', name: 'Son môi' },
-];
-
-const brandOptions = [
-  { id: '', name: 'Tất cả' },
-  { id: 'Naris Cosmetics', name: 'Naris Cosmetics' },
-  { id: 'L\'Oreal', name: 'L\'Oreal' },
-  { id: 'Eucerin', name: 'Eucerin' },
-  { id: 'La Roche-Posay', name: 'La Roche-Posay' },
-  { id: 'Cocoon', name: 'Cocoon' },
-  { id: 'Bioderma', name: 'Bioderma' },
-  { id: 'CeraVe', name: 'CeraVe' },
-  { id: 'Cetaphil', name: 'Cetaphil' },
-];
-
 const skinTypeOptions = [
-  { id: '', name: 'Tất cả' },
-  { id: 'Normal', name: 'Da thường' },
-  { id: 'Dry', name: 'Da khô' },
-  { id: 'Oily', name: 'Da dầu' },
-  { id: 'Combination', name: 'Da hỗn hợp' },
-  { id: 'Sensitive', name: 'Da nhạy cảm' },
+  { id: '', name: 'All' },
+  { id: 'Normal', name: 'Normal' },
+  { id: 'Dry', name: 'Dry' },
+  { id: 'Oily', name: 'Oily' },
+  { id: 'Combination', name: 'Combination' },
+  { id: 'Sensitive', name: 'Sensitive' },
 ];
 
 const skinColorOptions = [
-  { id: '', name: 'Tất cả' },
-  { id: 'Light', name: 'Sáng' },
-  { id: 'Medium', name: 'Vừa' },
-  { id: 'Tan', name: 'Rám nắng' },
-  { id: 'Dark', name: 'Tối' },
-];
-
-const volumeOptions = [
-  { id: '', name: 'Tất cả' },
-  { id: '10g', name: '10g' },
-  { id: '30ml', name: '30ml' },
-  { id: '50ml', name: '50ml' },
-  { id: '100ml', name: '100ml' },
-  { id: '200ml', name: '200ml' },
+  { id: '', name: 'All' },
+  { id: 'Light', name: 'Light' },
+  { id: 'Dark', name: 'Dark' },
+  { id: 'Neutral', name: 'Neutral' },
+  { id: 'Cool', name: 'Cool' },
+  { id: 'Warm', name: 'Warm' },
 ];
 
 const stockOptions = [
-  { id: '', name: 'Tất cả' },
-  { id: 'in_stock', name: 'Còn hàng' },
-  { id: 'out_of_stock', name: 'Hết hàng' },
+  { id: '', name: 'All' },
+  { id: 'In Stock', name: 'In Stock' },
+  { id: 'Out of Stock', name: 'Out of Stock' },
 ];
 
-export default function ShopScreen() {
+export default function ShopScreen({ route }) {
   const navigation = useNavigation();
   
-  // State management
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState('popular');
-  const [showSortOptions, setShowSortOptions] = useState(false);
-  
-  // Filter states
-  const [selectedSex, setSelectedSex] = useState('');
-  const [selectedType, setSelectedType] = useState('');
-  const [selectedBrand, setSelectedBrand] = useState('');
-  const [selectedSkinType, setSelectedSkinType] = useState('');
-  const [selectedSkinColor, setSelectedSkinColor] = useState('');
-  const [selectedVolume, setSelectedVolume] = useState('');
-  const [selectedStock, setSelectedStock] = useState('');
-  
-  // Modal states
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  
-  // API data state
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-  const [total, setTotal] = useState(0);
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMoreData, setHasMoreData] = useState(true);
 
-  // Fetch products from API
+  const { category, state } = route.params || {};
+  const selectedType = state?.type;
+  
+
+  useEffect(() => {
+    if (category) {
+      const tabId = category.toLowerCase().includes('cosmetic') ? 'cosmetics' : 'treatments';
+      setSelectedTab(tabId);
+    }
+  }, [category]);
+  
+
+  useEffect(() => {
+    if (selectedType) {
+      setType([selectedType]);
+    }
+  }, [selectedType]);
+
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTab, setSelectedTab] = useState(category === 'treatments' ? 'treatments' : 'cosmetics');
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  
+
+  const [sort, setSort] = useState('');
+  const [sex, setSex] = useState([]);
+  const [type, setType] = useState(selectedType ? [selectedType] : []); 
+  const [brand, setBrand] = useState([]);
+  const [skinType, setSkinType] = useState([]);
+  const [skinColor, setSkinColor] = useState([]);
+  const [stock, setStock] = useState([]);
+  
+
+  const [typeOptions, setTypeOptions] = useState([]);
+  const [brandOptions, setBrandOptions] = useState([]);
+
+
+  const getTypeOptions = () => {
+    if (selectedTab === 'cosmetics') {
+      return [
+        { value: 'Lipstick', label: 'Lipstick' },
+        { value: 'Eye Shadow', label: 'Eye Shadow' },
+        { value: 'Foundation', label: 'Foundation' },
+        { value: 'Brightener', label: 'Brightener' },
+        { value: 'Mascara', label: 'Mascara' },
+        { value: 'Blush', label: 'Blush' },
+        { value: 'Face Cream', label: 'Face Cream' },
+        { value: 'Primer', label: 'Primer' }
+      ];
+    } else {
+      return [
+        { value: 'Toner', label: 'Toner' },
+        { value: 'Cleanser', label: 'Cleanser' },
+        { value: 'Serum', label: 'Serum' },
+        { value: 'Moisturizer', label: 'Moisturizer' },
+        { value: 'Sunscreen', label: 'Sunscreen' }
+      ];
+    }
+  };
+
+
+  useEffect(() => {
+    if (category) {
+      const newTab = category === 'treatments' ? 'treatments' : 'cosmetics';
+      if (newTab !== selectedTab) {
+        setSelectedTab(newTab);
+        setPage(1);
+        setProducts([]);
+      }
+    }
+  }, [category]);
+
+  useEffect(() => {
+    if (selectedType) {
+      const currentTypeOptions = getTypeOptions();
+      
+      const incomingType = Array.isArray(selectedType) ? selectedType : [selectedType];
+      const validTypes = incomingType.filter(t =>
+        currentTypeOptions.some(opt => opt.value === t)
+      );
+      
+      setType(validTypes);
+      setPage(1);
+      setProducts([]);
+    }
+  }, [selectedType, selectedTab]);
+
+  useEffect(() => {
+    fetchOptions();
+  }, [selectedTab]);
+
   const fetchProducts = async (page = 1, append = false) => {
     try {
-      if (page === 1 && !append) {
-        setLoading(true);
-        setError(null);
-      } else {
-        setLoadingMore(true);
-      }
-
-      // Build API parameters
+      setLoading(true);
+      
+      const categoryId = selectedTab === 'cosmetics' ? COSMETICS_CATEGORY_ID : TREATMENTS_CATEGORY_ID;
+      
       const params = {
         pageIndex: page,
-        pageSize: 20,
+        pageSize: 100, 
+        categoryId: categoryId,
       };
 
-      // Add search filter
       if (searchQuery.trim()) {
         params.searchByName = searchQuery.trim();
       }
 
-      // Add category filter
-      if (selectedCategory !== 'all') {
-        params.searchByTag = selectedCategory;
-      }
-
-      // Add filter parameters
-      if (selectedSex) params.sex = selectedSex;
-      if (selectedType) params.type = selectedType;
-      if (selectedBrand) params.brand = selectedBrand;
-      if (selectedSkinType) params.skinType = selectedSkinType;
-      if (selectedSkinColor) params.skinColor = selectedSkinColor;
-      if (selectedVolume) params.volume = selectedVolume;
-      if (selectedStock === 'in_stock') params.inStock = true;
-      if (selectedStock === 'out_of_stock') params.inStock = false;
-
-      console.log('Fetching products with params:', params);
       const response = await productService.getAllProducts(params);
       
-      if (response.success) {
-        // Transform API products to app format
-        const transformedProducts = response.products.map(apiProduct => 
-          productService.transformProduct(apiProduct)
-        );
+      if (response.success && response.products) {
+        let filteredProducts = response.products.map(apiProduct => {
+          if (productService.transformProduct) {
+            return productService.transformProduct(apiProduct);
+          }
+          return apiProduct;
+        });
+
+        filteredProducts = filteredProducts.filter(product => {
+          const productCategoryId = 
+            (product.productCategory && product.productCategory._id)
+            || product.categoryId
+            || (product.category && product.category._id)
+            || product._original?.categoryId
+            || (product.productTypeId && product.productTypeId.category && product.productTypeId.category._id)
+            || (product.productTypeId && product.productTypeId.category && product.productTypeId.category.id);
+
+          const matches = String(productCategoryId) === String(categoryId)
+            || (selectedTab === 'cosmetics' && (product.category?.toLowerCase() === 'cosmetic' || product.category?.toLowerCase() === 'cosmetics'))
+            || (selectedTab === 'treatments' && (product.category?.toLowerCase() === 'treatment' || product.category?.toLowerCase() === 'medicals & treatments' || product.category?.toLowerCase() === 'treatments'));
+
+          return matches;
+        });
+
+        if (sex.length > 0) {
+          filteredProducts = filteredProducts.filter((p) => {
+            const productSex = p.sex?.charAt(0).toUpperCase() + p.sex?.slice(1).toLowerCase();
+            return sex.includes(productSex);
+          });
+        }
+
+        if (type.length > 0) {
+          filteredProducts = filteredProducts.filter(p => {
+            const productTypeName = p.productType || p.productTypeId?.name;
+            return type.includes(productTypeName);
+          });
+        }
+
+        if (brand.length > 0) {
+          filteredProducts = filteredProducts.filter((p) => {
+            const brandId = p.brand?._id || p.brand?.id;
+            return brand.includes(brandId);
+          });
+        }
+
+        if (skinType.length > 0) {
+          filteredProducts = filteredProducts.filter((p) => {
+            if (!Array.isArray(p.skinType)) return false;
+            return p.skinType.some((s) => {
+              const formatted = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+              return skinType.includes(formatted);
+            });
+          });
+        }
+
+        if (skinColor.length > 0) {
+          filteredProducts = filteredProducts.filter((p) => {
+            const productSkinColor = p.skinColor?.charAt(0).toUpperCase() + p.skinColor?.slice(1).toLowerCase();
+            return skinColor.includes(productSkinColor);
+          });
+        }
+
+        if (stock.length > 0) {
+          if (stock.includes("In Stock")) {
+            filteredProducts = filteredProducts.filter(p => (p.stock || 0) > 0);
+          }
+          if (stock.includes("Out of Stock")) {
+            filteredProducts = filteredProducts.filter(p => (p.stock || 0) === 0);
+          }
+        }
+
+        if (sort) {
+          filteredProducts.sort((a, b) => {
+            switch (sort) {
+              case 'Newest':
+                return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+              case 'Oldest':
+                return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+              case 'Price (Low to High)':
+                return (a.price || 0) - (b.price || 0);
+              case 'Price (High to Low)':
+                return (b.price || 0) - (a.price || 0);
+              default:
+                return 0;
+            }
+          });
+        }
 
         if (append && page > 1) {
-          // Append to existing products for pagination
-          setProducts(prev => [...prev, ...transformedProducts]);
+          setProducts(prev => [...prev, ...filteredProducts]);
         } else {
-          // Replace products for new search/filter
-          setProducts(transformedProducts);
+          setProducts(filteredProducts);
         }
         
-        setTotal(response.total);
-        setCurrentPage(page);
+        setPage(page);
         
-        // Check if there's more data to load
-        const totalLoaded = append ? products.length + transformedProducts.length : transformedProducts.length;
-        setHasMoreData(totalLoaded < response.total);
-        
-        console.log(`Loaded ${transformedProducts.length} products, total: ${response.total}`);
+        if (filteredProducts.length === 0) {
+          setHasMore(false);
+        } else {
+          const totalLoaded = append ? products.length + filteredProducts.length : filteredProducts.length;
+          const totalAvailable = response.total || 0;
+          const hasMoreData = totalLoaded < totalAvailable;
+          setHasMore(hasMoreData);
+        }
       } else {
-        setError(response.error || 'Không thể tải danh sách sản phẩm');
-        console.error('Error fetching products:', response.error);
+        setProducts([]);
       }
     } catch (error) {
-      setError('Lỗi kết nối. Vui lòng thử lại.');
-      console.error('Error in fetchProducts:', error);
+      setProducts([]);
     } finally {
       setLoading(false);
-      setLoadingMore(false);
       setRefreshing(false);
     }
   };
 
-  // Load more products for pagination
   const loadMoreProducts = () => {
-    if (!loadingMore && hasMoreData && products.length > 0) {
-      fetchProducts(currentPage + 1, true);
+    if (!loading && hasMore && products.length > 0) {
+      fetchProducts(page + 1, true);
     }
   };
 
-  // Refresh products
   const onRefresh = () => {
     setRefreshing(true);
-    setCurrentPage(1);
-    setHasMoreData(true);
+    setPage(1);
+    setHasMore(true);
     fetchProducts(1, false);
   };
 
-  // Clear all filters
   const clearAllFilters = () => {
-    setSelectedSex('');
-    setSelectedType('');
-    setSelectedBrand('');
-    setSelectedSkinType('');
-    setSelectedSkinColor('');
-    setSelectedVolume('');
-    setSelectedStock('');
-    setSelectedCategory('all');
+    setSort('');
+    setSex([]);
+    setType([]);
+    setBrand([]);
+    setSkinType([]);
+    setSkinColor([]);
+    setStock([]);
     setSearchQuery('');
   };
 
-  // Check if any filters are active
   const hasActiveFilters = () => {
-    return selectedSex || selectedType || selectedBrand || selectedSkinType || 
-           selectedSkinColor || selectedVolume || selectedStock || 
-           selectedCategory !== 'all' || searchQuery.trim();
+    return sort || sex.length > 0 || type.length > 0 || brand.length > 0 || 
+           skinType.length > 0 || skinColor.length > 0 || stock.length > 0 || 
+           searchQuery.trim();
   };
 
-  // Initial load
-  useEffect(() => {
-    fetchProducts(1, false);
-  }, []);
+  const fetchOptions = async () => {
+    try {
+      const categoryId = selectedTab === 'cosmetics' ? COSMETICS_CATEGORY_ID : TREATMENTS_CATEGORY_ID;
+      
+      const typeUrl = productService.getApiUrl('product-types');
+      
+      let typeResponse = await fetch(typeUrl);
+      
+      if (!typeResponse.ok) {
+        const altTypeUrl = productService.getApiUrl('productTypes');
+        typeResponse = await fetch(altTypeUrl);
+      }
+      
+      
+      if (!typeResponse.ok) {
+        return;
+      }
+      
+      
+      const contentType = typeResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        return;
+      }
+      
+      const typeData = await typeResponse.json();
+      
+      if (Array.isArray(typeData)) {
+        
+        const filteredTypes = typeData
+          .filter(pt => {
+            return pt.category?._id === categoryId;
+          })
+          .map(pt => ({ value: pt.name, label: pt.name }));
+        
+        setTypeOptions(filteredTypes);
+      } else {
+        
+        
+        if (selectedTab === 'cosmetics') {
+          const fallbackTypes = [
+            { value: 'Lipstick', label: 'Lipstick' },
+            { value: 'Eye Shadow', label: 'Eye Shadow' },
+            { value: 'Foundation', label: 'Foundation' },
+            { value: 'Brightener', label: 'Brightener' }
+          ];
+          setTypeOptions(fallbackTypes);
+        } else {
+          const fallbackTypes = [
+            { value: 'Toner', label: 'Toner' },
+            { value: 'Cleanser', label: 'Cleanser' },
+            { value: 'Serum', label: 'Serum' }
+          ];
+          setTypeOptions(fallbackTypes);
+        }
+      }
 
-  // Reload when filters change
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setCurrentPage(1);
-      setHasMoreData(true);
-      fetchProducts(1, false);
-    }, 500); // Debounce
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, selectedCategory, selectedSex, selectedType, selectedBrand, 
-      selectedSkinType, selectedSkinColor, selectedVolume, selectedStock]);
-
-  // Sort products locally
-  const sortProducts = (productList) => {
-    const sorted = [...productList];
-    
-    switch (sortBy) {
-      case 'newest':
-        return sorted.sort((a, b) => {
-          if (a.isNew && !b.isNew) return -1;
-          if (!a.isNew && b.isNew) return 1;
-          return new Date(b._original?.createdAt || 0) - new Date(a._original?.createdAt || 0);
-        });
-      case 'price_low':
-        return sorted.sort((a, b) => a.price - b.price);
-      case 'price_high':
-        return sorted.sort((a, b) => b.price - a.price);
-      case 'rating':
-        return sorted.sort((a, b) => b.rating - a.rating);
-      case 'popular':
-      default:
-        return sorted.sort((a, b) => {
-          if (a.isBestseller && !b.isBestseller) return -1;
-          if (!a.isBestseller && b.isBestseller) return 1;
-          return b.rating - a.rating;
-        });
+      
+      const brandUrl = productService.getApiUrl('brands');
+      
+      const brandResponse = await fetch(brandUrl);
+      
+      
+      if (!brandResponse.ok) {
+        return;
+      }
+      
+      
+      const brandContentType = brandResponse.headers.get('content-type');
+      if (!brandContentType || !brandContentType.includes('application/json')) {
+        return;
+      }
+      
+      const brandData = await brandResponse.json();
+      
+      if (brandData.success && Array.isArray(brandData.data)) {
+        const brandOpts = brandData.data.map(b => ({
+          value: b.id,
+          label: b.brandName
+        }));
+        setBrandOptions(brandOpts);
+      }
+    } catch (error) {
+      
     }
   };
 
-  // Handle product press
+  
+  const handleTabChange = (tabId) => {
+    setSelectedTab(tabId);
+    
+    clearAllFilters();
+    setPage(1);
+    setHasMore(true);
+  };
+
+  
+  useEffect(() => {
+    setMounted(true);
+    fetchOptions();
+    fetchProducts(1, false);
+  }, [selectedTab]);
+
+  
+  useEffect(() => {
+    
+    if (mounted && selectedTab) {
+      setPage(1);
+      setHasMore(true);
+      fetchProducts(1, false);
+    }
+  }, [sort, sex, type, brand, skinType, skinColor, stock, searchQuery]);
+
+  
+  useFocusEffect(
+    React.useCallback(() => {
+      if (mounted && selectedTab) {
+        fetchProducts(1, false);
+      }
+    }, [selectedTab])
+  );
+
+  
   const handleProductPress = (product) => {
     navigation.navigate('ProductDetail', { 
       product,
@@ -288,7 +450,7 @@ export default function ShopScreen() {
     });
   };
 
-  // Render product item
+  
   const renderProduct = ({ item, index }) => (
     <View style={[styles.productWrapper, { marginRight: index % 2 === 0 ? 8 : 0 }]}>
       <ProductCard 
@@ -299,60 +461,81 @@ export default function ShopScreen() {
     </View>
   );
 
-  // Render category button
-  const renderCategoryButton = ({ item }) => (
+  
+  const renderTabButton = ({ item }) => (
     <TouchableOpacity
       style={[
-        styles.categoryButton,
-        selectedCategory === item.id && styles.activeCategoryButton
+        styles.tabButton,
+        selectedTab === item.id && styles.activeTabButton
       ]}
-      onPress={() => setSelectedCategory(item.id)}
+      onPress={() => handleTabChange(item.id)}
     >
       <Ionicons 
         name={item.icon} 
         size={20} 
-        color={selectedCategory === item.id ? colors.white : colors.textSecondary} 
+        color={selectedTab === item.id ? colors.white : colors.textSecondary} 
       />
       <Text style={[
-        styles.categoryButtonText,
-        selectedCategory === item.id && styles.activeCategoryButtonText
+        styles.tabButtonText,
+        selectedTab === item.id && styles.activeTabButtonText
       ]}>
         {item.name}
       </Text>
     </TouchableOpacity>
   );
 
-  // Render filter option
-  const renderFilterOption = (title, options, selectedValue, onSelect) => (
-    <View style={styles.filterSection}>
-      <Text style={styles.filterTitle}>{title}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.filterOptions}>
-          {options.map(option => (
-            <TouchableOpacity
-              key={option.id}
-              style={[
-                styles.filterOption,
-                selectedValue === option.id && styles.activeFilterOption
-              ]}
-              onPress={() => onSelect(option.id)}
-            >
-              <Text style={[
-                styles.filterOptionText,
-                selectedValue === option.id && styles.activeFilterOptionText
-              ]}>
-                {option.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
-  );
+  
+  const renderFilterOption = (title, options, selectedValues, onSelect, multiple = true) => {
+    
+    return (
+      <View style={styles.filterSection}>
+        <Text style={styles.filterTitle}>{title}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.filterOptions}>
+            {options.map(option => {
+              const optionValue = option.id || option.value;
+              const optionLabel = option.name || option.label;
+              const isSelected = multiple 
+                ? selectedValues.includes(optionValue)
+                : selectedValues === optionValue;
+              
+              
+              return (
+                <TouchableOpacity
+                  key={optionValue}
+                  style={[
+                    styles.filterOption,
+                    isSelected && styles.activeFilterOption
+                  ]}
+                  onPress={() => {
+                    if (multiple) {
+                      const newValues = isSelected
+                        ? selectedValues.filter(v => v !== optionValue)
+                        : [...selectedValues, optionValue];
+                      onSelect(newValues);
+                    } else {
+                      onSelect(optionValue);
+                    }
+                  }}
+                >
+                  <Text style={[
+                    styles.filterOptionText,
+                    isSelected && styles.activeFilterOptionText
+                  ]}>
+                    {optionLabel}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
 
-  // Render footer for FlatList
+  
   const renderFooter = () => {
-    if (!loadingMore) return null;
+    if (!loading) return null;
     
     return (
       <View style={styles.footerLoader}>
@@ -362,202 +545,108 @@ export default function ShopScreen() {
     );
   };
 
-  // Get sorted products
-  const sortedProducts = sortProducts(products);
+  
+  const getBannerImage = () => {
+    return selectedTab === 'cosmetics' 
+      ? require('../../assets/facialcosmetics.png')
+      : require('../../assets/skincare.png');
+  };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Shop</Text>
+        <TouchableOpacity 
+          style={styles.filterButton}
+          onPress={() => setShowFilters(!showFilters)}
+        >
+          <Ionicons 
+            name={showFilters ? 'close' : 'filter'} 
+            size={24} 
+            color={colors.textPrimary} 
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search for products..."
-        />
-      </View>
+      
+      <SearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Tìm kiếm sản phẩm..."
+        style={styles.searchBar}
+      />
 
-      {/* Categories */}
-      <View style={styles.categoriesContainer}>
+      
+      <View style={styles.tabContainer}>
         <FlatList
-          data={categories}
-          renderItem={renderCategoryButton}
-          keyExtractor={item => item.id}
+          data={tabOptions}
+          renderItem={renderTabButton}
+          keyExtractor={item => item.id || `tab-${item.name}`}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesList}
+          contentContainerStyle={styles.tabList}
         />
       </View>
 
-      {/* Filter and Sort Bar */}
-      <View style={styles.toolbarContainer}>
-        <View style={styles.toolbarLeft}>
-          <Text style={styles.resultsText}>
-            {total > 0 ? `${total} sản phẩm` : 'Không có sản phẩm'}
-          </Text>
+      
+      {showFilters && (
+        <ScrollView 
+          style={styles.filtersContainer}
+          showsVerticalScrollIndicator={false}
+        >
           {hasActiveFilters() && (
             <TouchableOpacity 
               style={styles.clearFiltersButton}
               onPress={clearAllFilters}
             >
-              <Ionicons name="close-circle" size={16} color={colors.error} />
-              <Text style={styles.clearFiltersText}>Xóa bộ lọc</Text>
+              <Text style={styles.clearFiltersText}>Xóa tất cả bộ lọc</Text>
             </TouchableOpacity>
           )}
-        </View>
-        
-        <View style={styles.toolbarRight}>
-          <TouchableOpacity 
-            style={styles.filterButton}
-            onPress={() => setShowFilterModal(true)}
-          >
-            <Ionicons name="options-outline" size={18} color={colors.accent} />
-            <Text style={styles.filterButtonText}>Lọc</Text>
-            {hasActiveFilters() && <View style={styles.filterIndicator} />}
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.sortButton}
-            onPress={() => setShowSortOptions(!showSortOptions)}
-          >
-            <Text style={styles.sortButtonText}>
-              {sortOptions.find(option => option.id === sortBy)?.name}
-            </Text>
-            <Ionicons 
-              name={showSortOptions ? "chevron-up" : "chevron-down"} 
-              size={16} 
-              color={colors.textSecondary} 
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Sort Options Dropdown */}
-      {showSortOptions && (
-        <View style={styles.sortOptionsContainer}>
-          {sortOptions.map(option => (
-            <TouchableOpacity
-              key={option.id}
-              style={[
-                styles.sortOption,
-                sortBy === option.id && styles.activeSortOption
-              ]}
-              onPress={() => {
-                setSortBy(option.id);
-                setShowSortOptions(false);
-              }}
-            >
-              <Text style={[
-                styles.sortOptionText,
-                sortBy === option.id && styles.activeSortOptionText
-              ]}>
-                {option.name}
-              </Text>
-              {sortBy === option.id && (
-                <Ionicons name="checkmark" size={16} color={colors.accent} />
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
+          {renderFilterOption('Sort', sortOptions, sort, setSort, false)}
+          {renderFilterOption('Type', getTypeOptions(), type, setType)}
+          {brandOptions.length > 0 && renderFilterOption('Brand', brandOptions, brand, setBrand)}
+          {renderFilterOption('Stock', stockOptions, stock, setStock)}
+          {renderFilterOption('Sex', sexOptions, sex, setSex)}
+          {renderFilterOption('Skin type', skinTypeOptions, skinType, setSkinType)}
+          {renderFilterOption('Skin color', skinColorOptions, skinColor, setSkinColor)}
+        </ScrollView>
       )}
 
-      {/* Error State */}
-      {error && !loading && (
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
-          <Text style={styles.errorTitle}>Oops!</Text>
-          <Text style={styles.errorMessage}>{error}</Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={() => fetchProducts(1, false)}
-          >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={styles.loadingText}>Đang tải sản phẩm...</Text>
-        </View>
-      )}
-
-      {/* Products Grid */}
-      {!loading && !error && (
-        <FlatList
-          data={sortedProducts}
-          renderItem={renderProduct}
-          keyExtractor={item => item.id}
-          numColumns={2}
-          contentContainerStyle={styles.productsContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.accent]}
-              tintColor={colors.accent}
-            />
-          }
-          onEndReached={loadMoreProducts}
-          onEndReachedThreshold={0.1}
-          ListFooterComponent={renderFooter}
-          ListEmptyComponent={
+      
+      <FlatList
+        data={products}
+        renderItem={renderProduct}
+        keyExtractor={(item, index) => item.id || index.toString()}
+        numColumns={2}
+        columnWrapperStyle={styles.productRow}
+        contentContainerStyle={styles.productList}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.accent]}
+            tintColor={colors.accent}
+          />
+        }
+        onEndReached={loadMoreProducts}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={
+          !loading && (
             <View style={styles.emptyContainer}>
               <Ionicons name="search-outline" size={64} color={colors.textSecondary} />
-              <Text style={styles.emptyTitle}>Không tìm thấy sản phẩm</Text>
-              <Text style={styles.emptySubtitle}>
-                Thử điều chỉnh từ khóa tìm kiếm hoặc bộ lọc
+              <Text style={styles.emptyText}>
+                {searchQuery.trim() 
+                  ? 'No matching products found'
+                  : 'No products found'
+                }
               </Text>
             </View>
-          }
-        />
-      )}
-
-      {/* Filter Modal */}
-      <Modal
-        animationType="slide"
-        transparent={false}
-        visible={showFilterModal}
-        onRequestClose={() => setShowFilterModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-              <Ionicons name="close" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Filter</Text>
-            <TouchableOpacity onPress={clearAllFilters}>
-              <Text style={styles.clearAllText}>Clear all</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.modalContent}>
-            {renderFilterOption('Giới tính', sexOptions, selectedSex, setSelectedSex)}
-            {renderFilterOption('Loại sản phẩm', typeOptions, selectedType, setSelectedType)}
-            {renderFilterOption('Thương hiệu', brandOptions, selectedBrand, setSelectedBrand)}
-            {renderFilterOption('Loại da', skinTypeOptions, selectedSkinType, setSelectedSkinType)}
-            {renderFilterOption('Màu da', skinColorOptions, selectedSkinColor, setSelectedSkinColor)}
-            {renderFilterOption('Dung tích', volumeOptions, selectedVolume, setSelectedVolume)}
-            {renderFilterOption('Tình trạng', stockOptions, selectedStock, setSelectedStock)}
-          </ScrollView>
-          
-          <View style={styles.modalFooter}>
-            <TouchableOpacity 
-              style={styles.applyButton}
-              onPress={() => setShowFilterModal(false)}
-            >
-              <Text style={styles.applyButtonText}>Áp dụng</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+          )
+        }
+      />
     </View>
   );
 }
@@ -568,12 +657,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    alignItems: 'center',
+    flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: dimensions.spacing.medium,
     paddingTop: 48,
     paddingBottom: 12,
     backgroundColor: colors.background,
+    position: 'relative',
   },
   headerTitle: {
     fontSize: typography.sizes.header,
@@ -581,17 +672,24 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
   },
-  searchContainer: {
+  filterButton: {
+    padding: 8,
+    position: 'absolute',
+    right: dimensions.spacing.medium,
+    top: 45,
+    alignSelf: 'center',
+  },
+  searchBar: {
     paddingHorizontal: dimensions.spacing.medium,
     paddingVertical: dimensions.spacing.small,
   },
-  categoriesContainer: {
+  tabContainer: {
     paddingVertical: dimensions.spacing.small,
   },
-  categoriesList: {
+  tabList: {
     paddingHorizontal: dimensions.spacing.medium,
   },
-  categoryButton: {
+  tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: dimensions.spacing.medium,
@@ -600,112 +698,65 @@ const styles = StyleSheet.create({
     borderRadius: dimensions.borderRadius.large,
     backgroundColor: colors.lightGray,
   },
-  activeCategoryButton: {
+  activeTabButton: {
     backgroundColor: colors.accent,
   },
-  categoryButtonText: {
+  tabButtonText: {
     fontSize: typography.sizes.small,
     color: colors.textSecondary,
     marginLeft: dimensions.spacing.small,
     fontWeight: typography.weights.medium,
   },
-  activeCategoryButtonText: {
+  activeTabButtonText: {
     color: colors.white,
   },
-  toolbarContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  bannerContainer: {
+    height: 150,
+    marginTop: dimensions.spacing.small,
+    marginBottom: dimensions.spacing.small,
+    borderRadius: dimensions.borderRadius.large,
+    overflow: 'hidden',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: dimensions.borderRadius.large,
+  },
+  bannerTitle: {
+    fontSize: typography.sizes.large,
+    fontWeight: typography.weights.bold,
+    color: colors.white,
+    textAlign: 'center',
+  },
+  filtersContainer: {
     paddingHorizontal: dimensions.spacing.medium,
-    paddingVertical: dimensions.spacing.small,
-  },
-  toolbarLeft: {
-    flex: 1,
-  },
-  toolbarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  resultsText: {
-    fontSize: typography.sizes.small,
-    color: colors.textSecondary,
+    paddingBottom: dimensions.spacing.medium,
   },
   clearFiltersButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
+    alignSelf: 'flex-end',
+    paddingVertical: dimensions.spacing.small,
   },
   clearFiltersText: {
-    fontSize: typography.sizes.small,
-    color: colors.error,
-    marginLeft: 4,
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: colors.lightGray,
-    marginRight: 8,
-    position: 'relative',
-  },
-  filterButtonText: {
-    fontSize: typography.sizes.small,
-    color: colors.accent,
-    marginLeft: 4,
-    fontWeight: typography.weights.medium,
-  },
-  filterIndicator: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.error,
-  },
-  sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sortButtonText: {
-    fontSize: typography.sizes.small,
-    color: colors.text,
-    marginRight: dimensions.spacing.small,
-  },
-  sortOptionsContainer: {
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
-    elevation: 2,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  sortOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: dimensions.spacing.medium,
-    paddingVertical: dimensions.spacing.medium,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
-  },
-  activeSortOption: {
-    backgroundColor: colors.accent + '10',
-  },
-  sortOptionText: {
     fontSize: typography.sizes.medium,
-    color: colors.text,
-  },
-  activeSortOptionText: {
     color: colors.accent,
-    fontWeight: typography.weights.medium,
+    fontWeight: '500',
   },
-  productsContainer: {
-    padding: dimensions.spacing.medium,
+  productRow: {
+    justifyContent: 'space-between',
+    marginBottom: dimensions.spacing.medium,
+  },
+  productList: {
+    paddingHorizontal: dimensions.spacing.medium,
     paddingBottom: 120,
   },
   productWrapper: {
@@ -774,17 +825,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: dimensions.spacing.xxLarge,
   },
-  emptyTitle: {
-    fontSize: typography.sizes.large,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginTop: dimensions.spacing.medium,
-    marginBottom: dimensions.spacing.small,
-  },
-  emptySubtitle: {
+  emptyText: {
     fontSize: typography.sizes.medium,
     color: colors.textSecondary,
-    textAlign: 'center',
+    marginTop: dimensions.spacing.medium,
   },
   // Modal styles
   modalContainer: {
@@ -857,13 +901,13 @@ const styles = StyleSheet.create({
   },
   applyButton: {
     backgroundColor: colors.accent,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   applyButtonText: {
     color: colors.white,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 }); 

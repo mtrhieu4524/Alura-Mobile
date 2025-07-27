@@ -17,10 +17,21 @@ export const AuthProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Check authentication status on app start
   useEffect(() => {
-    checkAuthStatus();
+    initializeAsGuest();
   }, []);
+
+  const initializeAsGuest = async () => {
+    try {
+      await authService.logout();
+      setIsLoggedIn(false);
+      setUser(null);
+    } catch (error) {
+      console.log('Initialize as guest:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const checkAuthStatus = async () => {
     try {
@@ -33,14 +44,17 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
+      
+      setIsLoggedIn(false);
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (email, password, rememberMe = false) => {
     try {
-      const result = await authService.login(email, password);
+      const result = await authService.login(email, password, rememberMe);
       
       if (result.success) {
         setIsLoggedIn(true);
@@ -60,7 +74,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: result.message };
       }
     } catch (error) {
-      const errorMessage = error.message || 'Login failed';
+      const errorMessage = error.message || 'Wrong email or password.';
       Toast.show({
         type: 'error',
         text1: 'Login Failed',

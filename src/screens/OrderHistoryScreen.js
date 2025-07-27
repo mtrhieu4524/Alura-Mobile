@@ -21,7 +21,6 @@ export default function OrderHistoryScreen() {
   const [offlineOrderStats, setOfflineOrderStats] = useState(null);
   const [processingOfflineOrders, setProcessingOfflineOrders] = useState(false);
 
-  // Fetch orders from API
   const fetchOrders = async (showLoading = true) => {
     try {
       if (showLoading) {
@@ -43,31 +42,30 @@ export default function OrderHistoryScreen() {
 
       if (response.success) {
         setOrders(response.orders);
-        console.log('✅ Orders loaded successfully:', response.orders.length);
+        console.log('Orders loaded successfully:', response.orders.length);
         
-        // Debug: Log order details if any
         if (response.orders.length > 0) {
           console.log('Sample order:', JSON.stringify(response.orders[0], null, 2));
         } else {
-          console.log('❌ No orders found - user may not have placed any orders yet');
+          console.log('No orders found - user may not have placed any orders yet');
           console.log('After VNPAY payment, orders should appear here automatically');
         }
       } else {
         setError(response.message);
-        console.log('❌ Failed to fetch orders:', response.message);
+        console.log('Failed to fetch orders:', response.message);
         Toast.show({
           type: 'error',
-          text1: 'Lỗi',
-          text2: response.message || 'Không thể tải lịch sử đơn hàng',
+          text1: 'Error',
+          text2: response.message || 'Cannot load order history',
         });
       }
     } catch (error) {
-      console.error('❌ Error fetching orders:', error);
-      setError('Lỗi kết nối. Vui lòng thử lại.');
+      console.error('Error fetching orders:', error);
+      setError('Connection error. Please try again.');
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Lỗi kết nối. Vui lòng thử lại.',
+        text1: 'Error',
+        text2: 'Connection error. Please try again.',
       });
     } finally {
       if (showLoading) {
@@ -77,20 +75,18 @@ export default function OrderHistoryScreen() {
     }
   };
 
-  // Refresh orders
   const onRefresh = () => {
     setRefreshing(true);
     fetchOrders(false);
   };
 
-  // Check for pending VNPAY callback
   const checkPendingVNPayCallback = async () => {
     try {
       const hasPending = await VNPayRetryService.hasPendingCallback();
       if (hasPending) {
         const callbackInfo = await VNPayRetryService.getPendingCallbackInfo();
         setPendingVNPayCallback(callbackInfo);
-        console.log('📱 Found pending VNPAY callback:', callbackInfo);
+        console.log('Found pending VNPAY callback:', callbackInfo);
       } else {
         setPendingVNPayCallback(null);
       }
@@ -99,7 +95,6 @@ export default function OrderHistoryScreen() {
     }
   };
 
-  // Retry pending VNPAY callback
   const retryVNPayCallback = async () => {
     if (!pendingVNPayCallback) return;
     
@@ -107,62 +102,60 @@ export default function OrderHistoryScreen() {
     try {
       Toast.show({
         type: 'info',
-        text1: 'Đang thử lại...',
-        text2: 'Đang xử lý thanh toán VNPAY',
+        text1: 'Retrying...',
+        text2: 'Processing VNPAY payment',
       });
 
-      console.log('🔄 Retrying VNPAY callback from Order History...');
+      console.log('Retrying VNPAY callback from Order History...');
       const result = await VNPayRetryService.retryPendingCallback();
       
       if (result.success) {
-        console.log('✅ VNPAY callback retry successful!');
+        console.log('VNPAY callback retry successful!');
         setPendingVNPayCallback(null);
         
         Toast.show({
           type: 'success',
-          text1: 'Thành công!',
-          text2: 'Đơn hàng đã được xử lý',
+          text1: 'Success!',
+          text2: 'Order has been processed',
         });
 
-        // Refresh orders để hiển thị đơn hàng mới
         await fetchOrders();
       } else {
-        console.log('❌ VNPAY callback retry failed:', result.message);
+        console.log('VNPAY callback retry failed:', result.message);
         Toast.show({
           type: 'error',
-          text1: 'Thất bại',
-          text2: 'Không thể kết nối đến server',
+          text1: 'Failed',
+          text2: 'Cannot connect to server',
         });
       }
     } catch (error) {
       console.log('Error retrying VNPAY callback:', error);
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Có lỗi xảy ra khi thử lại',
+        text1: 'Error',
+        text2: 'An error occurred while retrying',
       });
     } finally {
       setRetryingVNPay(false);
     }
   };
 
-  // Clear pending VNPAY callback
   const clearPendingCallback = async () => {
     Alert.alert(
-      'Xóa thanh toán đang chờ',
-      'Bạn có chắc muốn xóa thông tin thanh toán đang chờ xử lý không?',
+      'Delete pending payment',
+      'Are you sure you want to delete the pending payment information?',
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Xóa',
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             await VNPayRetryService.clearPendingCallback();
             setPendingVNPayCallback(null);
             Toast.show({
               type: 'success',
-              text1: 'Đã xóa',
-              text2: 'Thông tin thanh toán đã được xóa',
+              text1: 'Deleted',
+              text2: 'Payment information has been deleted',
             });
           }
         }
@@ -170,18 +163,16 @@ export default function OrderHistoryScreen() {
     );
   };
 
-  // Check offline order stats
   const checkOfflineOrderStats = async () => {
     try {
       const stats = await OfflineOrderManager.getOfflineOrderStats();
       setOfflineOrderStats(stats);
-      console.log('📊 Offline order stats:', stats);
+      console.log('Offline order stats:', stats);
     } catch (error) {
       console.log('Error checking offline order stats:', error);
     }
   };
 
-  // Process offline orders
   const processOfflineOrders = async () => {
     if (processingOfflineOrders) return;
     
@@ -189,67 +180,65 @@ export default function OrderHistoryScreen() {
     try {
       Toast.show({
         type: 'info',
-        text1: 'Đang xử lý...',
-        text2: 'Đang thử tạo các đơn hàng đang chờ',
+        text1: 'Processing...',
+        text2: 'Processing offline orders',
       });
 
-      console.log('🔄 Processing offline orders from Order History...');
+      console.log('Processing offline orders from Order History...');
       const result = await OfflineOrderManager.processOfflineOrders();
       
       if (result.processed > 0) {
-        console.log(`✅ ${result.processed} offline orders processed successfully!`);
+        console.log(`${result.processed} offline orders processed successfully!`);
         
         Toast.show({
           type: 'success',
-          text1: 'Thành công!',
-          text2: `Đã xử lý ${result.processed} đơn hàng`,
+          text1: 'Success!',
+          text2: `Processed ${result.processed} orders`,
         });
 
-        // Refresh orders và stats
         await fetchOrders();
         await checkOfflineOrderStats();
       } else if (result.total === 0) {
         Toast.show({
           type: 'info',
-          text1: 'Không có đơn hàng',
-          text2: 'Không có đơn hàng nào cần xử lý',
+          text1: 'No orders',
+          text2: 'No orders need to be processed',
         });
       } else {
         Toast.show({
           type: 'error',
-          text1: 'Thất bại',
-          text2: 'Không thể kết nối đến server',
+          text1: 'Failed',
+          text2: 'Cannot connect to server',
         });
       }
     } catch (error) {
       console.log('Error processing offline orders:', error);
       Toast.show({
         type: 'error',
-        text1: 'Lỗi',
-        text2: 'Có lỗi xảy ra khi xử lý đơn hàng',
+        text1: 'Error',
+        text2: 'An error occurred while processing orders',
       });
     } finally {
       setProcessingOfflineOrders(false);
     }
   };
 
-  // Clear all offline orders
   const clearOfflineOrders = async () => {
     Alert.alert(
-      'Xóa đơn hàng offline',
-      'Bạn có chắc muốn xóa tất cả đơn hàng đang chờ xử lý không?',
+      'Delete offline orders',
+      'Are you sure you want to delete all offline orders?',
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Xóa',
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             await OfflineOrderManager.clearAllOfflineOrders();
             setOfflineOrderStats(null);
             Toast.show({
               type: 'success',
-              text1: 'Đã xóa',
-              text2: 'Đã xóa tất cả đơn hàng offline',
+              text1: 'Deleted',
+              text2: 'All offline orders have been deleted',
             });
           }
         }
@@ -257,32 +246,29 @@ export default function OrderHistoryScreen() {
     );
   };
 
-  // Fetch orders when component mounts
   useEffect(() => {
     if (isLoggedIn) {
       fetchOrders();
-      checkPendingVNPayCallback(); // Check for pending VNPAY callbacks
-      checkOfflineOrderStats(); // Check for offline orders
+      checkPendingVNPayCallback(); 
+      checkOfflineOrderStats(); 
     } else {
       setLoading(false);
       setOrders([]);
     }
   }, [isLoggedIn]);
 
-  // Auto refresh orders when screen comes into focus (after VNPAY success)
   useFocusEffect(
     React.useCallback(() => {
       if (isLoggedIn) {
-        console.log('📱 OrderHistory screen focused - refreshing orders...');
+        console.log('OrderHistory screen focused - refreshing orders...');
         console.log('This should show VNPAY orders created by backend callback');
-        fetchOrders(false); // Refresh without loading indicator
-        checkPendingVNPayCallback(); // Check for pending VNPAY callbacks
-        checkOfflineOrderStats(); // Check for offline orders
+        fetchOrders(false); 
+        checkPendingVNPayCallback(); 
+        checkOfflineOrderStats(); 
       }
     }, [isLoggedIn])
   );
 
-  // Not logged in state
   if (!isLoggedIn) {
     return (
       <View style={styles.container}>
@@ -291,7 +277,7 @@ export default function OrderHistoryScreen() {
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={26} color={colors.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Lịch sử đơn hàng</Text>
+            <Text style={styles.headerTitle}>Order History</Text>
             <TouchableOpacity onPress={onRefresh} disabled={refreshing}>
               <Ionicons 
                 name="refresh" 
@@ -303,20 +289,19 @@ export default function OrderHistoryScreen() {
         </SafeAreaView>
         <View style={styles.notLoggedInContainer}>
           <Ionicons name="person-outline" size={80} color={colors.textSecondary} />
-          <Text style={styles.notLoggedInTitle}>Bạn chưa đăng nhập</Text>
-          <Text style={styles.notLoggedInSubtitle}>Vui lòng đăng nhập để xem lịch sử đơn hàng</Text>
+          <Text style={styles.notLoggedInTitle}>You are not logged in</Text>
+          <Text style={styles.notLoggedInSubtitle}>Please login to view order history</Text>
           <TouchableOpacity 
             style={styles.loginButton}
             onPress={() => navigation.navigate('Login')}
           >
-            <Text style={styles.loginButtonText}>Đăng nhập</Text>
+            <Text style={styles.loginButtonText}>Login</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  // Loading state
   if (loading) {
     return (
       <View style={styles.container}>
@@ -337,13 +322,12 @@ export default function OrderHistoryScreen() {
         </SafeAreaView>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={styles.loadingText}>Đang tải lịch sử đơn hàng...</Text>
+          <Text style={styles.loadingText}>loading order history...</Text>
         </View>
       </View>
     );
   }
 
-  // Error state  
   if (error) {
     return (
       <View style={styles.container}>
@@ -364,13 +348,13 @@ export default function OrderHistoryScreen() {
         </SafeAreaView>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={80} color={colors.textSecondary} />
-          <Text style={styles.errorTitle}>Không thể tải dữ liệu</Text>
+          <Text style={styles.errorTitle}>Cannot load data</Text>
           <Text style={styles.errorSubtitle}>{error}</Text>
           <TouchableOpacity 
             style={styles.retryButton}
             onPress={() => fetchOrders()}
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -400,37 +384,36 @@ export default function OrderHistoryScreen() {
     navigation.navigate('OrderDetail', { order });
   };
 
-  // Handle cancel order
   const handleCancelOrder = (order) => {
     if (order.status === 'Cancelled' || order.status === 'Success' || order.status === 'Delivered' || order.status === 'Shipped') {
       return;
     }
 
     Alert.alert(
-      'Hủy đơn hàng',
-      'Bạn có chắc chắn muốn hủy đơn hàng này?',
+      'Cancel order',
+      'Are you sure you want to cancel this order?',
       [
         {
-          text: 'Không',
+          text: 'No',
           style: 'cancel',
         },
         {
-          text: 'Hủy đơn hàng',
+          text: 'Cancel order',
           style: 'destructive',
           onPress: async () => {
             const response = await orderService.cancelOrder(order.orderId);
             if (response.success) {
               Toast.show({
                 type: 'success',
-                text1: 'Thành công',
-                text2: 'Đơn hàng đã được hủy',
+                text1: 'Success',
+                text2: 'Order has been cancelled',
               });
-              fetchOrders(false); // Refresh orders
+              fetchOrders(false); 
             } else {
               Toast.show({
                 type: 'error',
-                text1: 'Lỗi',
-                text2: response.message || 'Không thể hủy đơn hàng',
+                text1: 'Error',
+                text2: response.message || 'Cannot cancel order',
               });
             }
           },
@@ -454,7 +437,6 @@ export default function OrderHistoryScreen() {
       <Text style={styles.itemCount}>{item.items.length} items</Text>
       <Text style={styles.totalPrice}>{formatPrice(item.totalPrice)}</Text>
       
-      {/* Action buttons */}
       <View style={styles.actionButtons}>
         <TouchableOpacity 
           style={styles.viewButton} 
@@ -484,16 +466,10 @@ export default function OrderHistoryScreen() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Order History</Text>
           <TouchableOpacity onPress={onRefresh} disabled={refreshing}>
-            <Ionicons 
-              name="refresh" 
-              size={26} 
-              color={refreshing ? colors.textSecondary : colors.textPrimary} 
-            />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
       
-      {/* Offline Orders Status */}
       {offlineOrderStats && offlineOrderStats.pending > 0 && (
         <View style={styles.offlineOrdersContainer}>
           <View style={styles.offlineOrdersHeader}>

@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '../constants';
 import { getApiUrl } from '../config/environment';
 import orderService from '../services/orderService';
-import { vnpayService, authService } from '../services';
+import { vnpayService, authService, productService } from '../services';
 import VNPayWebView from '../components/payment/VNPayWebView';
 import Toast from 'react-native-toast-message';
 
@@ -38,13 +38,13 @@ export default function CheckoutScreen() {
   const [userProfileLoading, setUserProfileLoading] = useState(false);
   const [showVNPayWebView, setShowVNPayWebView] = useState(false);
   const [vnpayUrl, setVnpayUrl] = useState('');
+  const [validatingProducts, setValidatingProducts] = useState(false);
 
   const subtotal = cart && Array.isArray(cart) ? cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 0), 0) : 0;
   const selectedShipping = shippingMethods.find(method => method.key === shippingMethod);
   const shipping = selectedShipping ? selectedShipping.fee : 30000;
   const total = subtotal + shipping;
 
-  // Auto-load user profile when component mounts
   useEffect(() => {
     const loadUserProfile = async () => {
       if (!isLoggedIn) {
@@ -54,9 +54,8 @@ export default function CheckoutScreen() {
 
       try {
         setUserProfileLoading(true);
-        console.log('🔄 Loading user profile for checkout auto-fill...');
+        console.log('Loading user profile for checkout auto-fill...');
         
-        // Get current user info
         const { userId } = await authService.getCurrentUser();
         if (!userId) {
           console.log('No user ID found');
@@ -65,139 +64,214 @@ export default function CheckoutScreen() {
 
         console.log('👤 User ID:', userId);
         
-        // Fetch user profile
         const profileResponse = await authService.getUserProfile(userId);
         console.log('Profile response:', JSON.stringify(profileResponse, null, 2));
 
         if (profileResponse.success && profileResponse.data) {
           const userProfile = profileResponse.data.user || profileResponse.data;
-          console.log('✅ User profile loaded:', userProfile);
+          console.log('User profile loaded:', userProfile);
           
-          // Auto-fill form fields
           if (userProfile.name) {
             setName(userProfile.name);
-            console.log('✅ Auto-filled name:', userProfile.name);
+            console.log('Auto-filled name:', userProfile.name);
           }
           if (userProfile.phone) {
             setPhone(userProfile.phone);
-            console.log('✅ Auto-filled phone:', userProfile.phone);
+            console.log('Auto-filled phone:', userProfile.phone);
           }
           if (userProfile.address) {
             setAddress(userProfile.address);
-            console.log('✅ Auto-filled address:', userProfile.address);
+            console.log('Auto-filled address:', userProfile.address);
           }
 
           Toast.show({
             type: 'info',
-            text1: 'Thông tin đã được điền tự động',
-            text2: 'Bạn có thể chỉnh sửa nếu cần',
+            text1: 'Information has been auto-filled successfully',
+            text2: 'You can edit if needed',
           });
         } else {
-          console.log('❌ Failed to load user profile:', profileResponse.message);
+          console.log('Failed to load user profile:', profileResponse.message);
         }
       } catch (error) {
-        // console.error('❌ Error loading user profile:', error);  
       } finally {
         setUserProfileLoading(false);
       }
     };
 
     loadUserProfile();
-  }, [isLoggedIn]); // Reload when login status changes
+  }, [isLoggedIn]); 
 
-  // Auto-fetch cart if empty when component mounts
   useEffect(() => {
     const ensureCartLoaded = async () => {
-      console.log('=== CHECKOUT CART DEBUG ===');
       console.log('Cart loading:', cartLoading);
       console.log('Cart exists:', !!cart);
       console.log('Cart is array:', Array.isArray(cart));
       console.log('Cart length:', cart ? cart.length : 'undefined');
       
       if (isLoggedIn && (!cart || cart.length === 0)) {
-        console.log('🛒 Cart is empty on checkout, fetching from API...');
+        console.log('Cart is empty on checkout, fetching from API...');
         try {
           const result = await fetchCartFromAPI();
           if (result.success) {
-            console.log('✅ Cart loaded successfully for checkout');
+            console.log('Cart loaded successfully for checkout');
           } else {
-            console.log('❌ Failed to load cart:', result.message);
+            console.log('Failed to load cart:', result.message);
           }
         } catch (error) {
-          console.error('❌ Error loading cart for checkout:', error);
         }
       }
     };
 
     ensureCartLoaded();
-  }, [isLoggedIn, cart ? cart.length : 0]); // Run when login status or cart length changes
+  }, [isLoggedIn, cart ? cart.length : 0]); 
 
-  // Handle both URL images (from API) and local assets
   const getImageSource = (product) => {
     if (product.image) {
-      // If it's a string (URL), use { uri: ... }
       if (typeof product.image === 'string') {
         return { uri: product.image };
       }
-      // If it's a local asset (require()), use directly
       return product.image;
     }
     
-    // Fallback to a placeholder if no image
-    return require('../../assets/product1.png'); // Default placeholder
+    return require('../../assets/product1.png'); 
   };
 
-  const validateForm = () => {
+  const validateForm = async () => {
     if (!name.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập họ tên.');
+      Alert.alert('Missing information', 'Please enter name.');
       return false;
     }
     if (!phone.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập số điện thoại.');
+      Alert.alert('Missing information', 'Please enter phone number.');
       return false;
     }
     if (!address.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập địa chỉ giao hàng.');
+      Alert.alert('Missing information', 'Please enter shipping address.');
       return false;
     }
-    if (cart.length === 0) {
-      Alert.alert('Giỏ hàng trống', 'Không có sản phẩm nào trong giỏ hàng.');
+    if (!cart || cart.length === 0) {
+      Alert.alert('Cart is empty', 'No products in cart.');
       return false;
     }
-    return true;
+
+    try {
+      setValidatingProducts(true);
+      console.log('Checking hidden products in cart...');
+      
+      for (const item of cart) {
+        let productId = null;
+        if (typeof item.productId === 'string') {
+          productId = item.productId;
+        } else if (item.productId && typeof item.productId === 'object' && item.productId._id) {
+          productId = item.productId._id;
+        } else if (item._id) {
+          productId = item._id;
+        } else if (item.id) {
+          productId = item.id;
+        }
+
+        if (!productId) {
+          console.log('No productId found for item:', item.name);
+          Toast.show({
+            type: 'error',
+            text1: 'Invalid product',
+            text2: `Product "${item.name}" has invalid data. Please remove it from the cart.`,
+          });
+          setTimeout(() => {
+            fetchCartFromAPI();
+          }, 2000);
+          return false;
+        }
+
+        console.log(`Checking product: ${item.name} (ID: ${productId})`);
+        
+        const productResponse = await productService.getProductById(productId);
+        
+        if (!productResponse.success) {
+          console.log(`Product ${item.name} is not available:`, productResponse.error);
+          Toast.show({
+            type: 'error',
+            text1: 'Product not available',
+            text2: `Product "${item.name}" is not available. Please remove it from the cart.`,
+          });
+          setTimeout(() => {
+            fetchCartFromAPI();
+          }, 2000);
+          return false;
+        }
+
+        const product = productResponse.product;
+        if (product && product.hidden === true) {
+          console.log(`Product ${item.name} has been hidden`);
+          Toast.show({
+            type: 'error',
+            text1: 'Product not available',
+            text2: `Product "${item.name}" has been hidden from the store. Please remove it from the cart.`,
+          });
+          setTimeout(() => {
+            fetchCartFromAPI();
+          }, 2000);
+          return false;
+        }
+
+        if (product && product.stock !== undefined && product.stock <= 0) {
+          console.log(`Product ${item.name} is sold out (stock: ${product.stock})`);
+          Toast.show({
+            type: 'error',
+            text1: 'Product sold out',
+            text2: `Product "${item.name}" is sold out. Please remove it from the cart.`,
+          });
+          setTimeout(() => {
+            fetchCartFromAPI();
+          }, 2000);
+          return false;
+        }
+
+        console.log(`Product ${item.name} is available`);
+      }
+
+      console.log('All products in the cart are available');
+      return true;
+    } catch (error) {
+      console.log('Product validation error:', error);
+      Alert.alert(
+        'Product validation error', 
+        'Cannot check product status. Please try again.'
+      );
+      return false;
+    } finally {
+      setValidatingProducts(false);
+    }
   };
 
   const handleOrder = async () => {
     if (!isLoggedIn) {
-      Alert.alert('Yêu cầu đăng nhập', 'Bạn cần đăng nhập để đặt hàng.');
+    Alert.alert('Login required', 'You need to login to place an order.');
       return;
     }
 
     if (cartLoading) {
-      Alert.alert('Đang tải', 'Giỏ hàng đang được tải. Vui lòng đợi giây lát.');
+      Alert.alert('Loading', 'Cart is loading. Please wait a moment.');
       return;
     }
 
-    if (!validateForm()) {
+    const isValid = await validateForm();
+    if (!isValid) {
       return;
     }
 
     try {
       setLoading(true);
 
-      // Debug: Log cart structure
-      console.log('=== CHECKOUT DEBUG ===');
       console.log('Cart items:', JSON.stringify(cart, null, 2));
       console.log('Cart length:', cart.length);
       console.log('Cart is array:', Array.isArray(cart));
       
-      // Validate cart before processing
       if (!cart || !Array.isArray(cart) || cart.length === 0) {
-        Alert.alert('Lỗi giỏ hàng', 'Giỏ hàng trống hoặc không hợp lệ. Vui lòng thêm sản phẩm trước khi thanh toán.');
+        Alert.alert('Cart error', 'Cart is empty or invalid. Please add products before payment.');
         return;
       }
       
-      // Debug: Log each cart item structure
       cart.forEach((item, index) => {
         console.log(`Cart item ${index}:`, {
           id: item.id,
@@ -209,63 +283,53 @@ export default function CheckoutScreen() {
         });
       });
 
-      // Prepare order data in format matching web API EXACTLY
       const orderData = {
         shippingAddress: address.trim(),
-        shippingMethod: shippingMethod.toUpperCase(), // STANDARD or EXPRESS  
+        shippingMethod: shippingMethod.toUpperCase(),  
         promotionId: null,
         note: note.trim() || "",
         phoneNumber: phone.trim(),
-        // Add customerInfo for backend compatibility
         customerInfo: {
           name: name.trim(),
           phone: phone.trim(),
           address: address.trim(),
         },
-        // Use selectedCartItemIds exactly like web
-        selectedCartItemIds: (cart && Array.isArray(cart)) ? cart.map(item => item._id || item.id).filter(id => id) : [], // Cart item IDs, not product IDs
-        // Only include paymentMethod for COD, not for VNPAY prepare step
+        selectedCartItemIds: (cart && Array.isArray(cart)) ? cart.map(item => item._id || item.id).filter(id => id) : [], 
         ...(payment === 'cod' && { paymentMethod: payment.toUpperCase() }),
       };
 
-      // Debug selectedCartItemIds
       console.log('Selected cart item IDs:', orderData.selectedCartItemIds);
       console.log('Number of valid cart item IDs:', orderData.selectedCartItemIds.length);
 
       console.log('Order data being sent (web format):', JSON.stringify(orderData, null, 2));
 
-      // Validate order data before sending
       if (!orderData.selectedCartItemIds || orderData.selectedCartItemIds.length === 0) {
-        Alert.alert('Lỗi', 'Giỏ hàng trống hoặc không hợp lệ - không có ID sản phẩm hợp lệ');
+        Alert.alert('Error', 'Cart is empty or invalid - no valid product IDs');
         return;
       }
 
-      // Check if all cart items have valid IDs
       const invalidIds = orderData.selectedCartItemIds.filter(id => !id);
       if (invalidIds.length > 0) {
         console.error('Invalid cart item IDs found:', invalidIds);
-        Alert.alert('Lỗi', 'Một số sản phẩm trong giỏ hàng không có ID hợp lệ');
+        Alert.alert('Error', 'Some products in the cart have invalid IDs');
         return;
       }
 
-      console.log(`✅ Order validation passed: ${orderData.selectedCartItemIds.length} cart items ready to send`);
+      console.log(`Order validation passed: ${orderData.selectedCartItemIds.length} cart items ready to send`);
 
       if (payment === 'vnpay') {
-        // VNPAY flow: prepare order first, then create payment URL
         await handleVNPayPayment(orderData);
       } else {
-        // COD flow: create order directly using web format
         const response = await orderService.placeCODOrder(orderData);
 
         if (response.success) {
           handleOrderSuccess();
         } else {
-          Alert.alert('Đặt hàng thất bại', response.message || 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.');
+          Alert.alert('Order failed', response.message || 'An error occurred while placing the order. Please try again.');
         }
       }
     } catch (error) {
-      // console.error('Error creating order:', error);  
-      Alert.alert('Lỗi', 'Lỗi kết nối. Vui lòng kiểm tra mạng và thử lại.');
+      Alert.alert('Error', 'Connection error. Please check your network and try again.');
     } finally {
       setLoading(false);
     }
@@ -273,59 +337,38 @@ export default function CheckoutScreen() {
 
   const handleVNPayPayment = async (orderData) => {
     try {
-      // Step 1: Prepare order for VNPAY (like web)
-      // console.log('=== VNPAY PAYMENT FLOW START ===');  
-      // console.log('Order data being prepared:', JSON.stringify(orderData, null, 2));
-      
       const prepareResponse = await orderService.prepareVNPayOrder(orderData);
-      // console.log('Prepare response:', JSON.stringify(prepareResponse, null, 2));
       
       if (!prepareResponse.success) {
-        // console.error('Failed to prepare VNPAY order:', prepareResponse.message);  
-        Alert.alert('Lỗi chuẩn bị đơn hàng', prepareResponse.message || 'Không thể chuẩn bị đơn hàng cho VNPAY.');
+        Alert.alert('Order preparation failed', prepareResponse.message || 'Cannot prepare order for VNPAY.');
         return;
       }
 
-      // console.log('✅ Step 1: Order prepared successfully');
-      // console.log('📦 TempOrder should be created in backend with ID:', prepareResponse.data?.tempOrderId || 'unknown');
-
-      // Step 2: Create payment URL (like web)
-      // console.log('🔗 Step 2: Creating VNPAY payment URL...');
       const paymentData = {
         ...prepareResponse.data.paymentData,
         amount: prepareResponse.data.amount
       };
-      // console.log('Payment data for URL creation:', JSON.stringify(paymentData, null, 2));
       
       const paymentUrlResponse = await orderService.createVNPayPaymentUrl(paymentData);
-      // console.log('Payment URL response:', JSON.stringify(paymentUrlResponse, null, 2));
 
       if (!paymentUrlResponse.success) {
-        // console.error('Failed to create payment URL:', paymentUrlResponse.message);     
-        Alert.alert('Lỗi tạo liên kết thanh toán', paymentUrlResponse.message || 'Không thể tạo liên kết thanh toán.');
+        Alert.alert('Payment link creation failed', paymentUrlResponse.message || 'Cannot create payment link.');
         return;
       }
 
-      // console.log('✅ Step 2: Payment URL created successfully');
-      // console.log('💳 VNPAY URL:', paymentUrlResponse.paymentUrl);
-
-      // Validate payment URL
       if (!paymentUrlResponse.paymentUrl || !paymentUrlResponse.paymentUrl.startsWith('http')) {
-        // console.error('Invalid payment URL:', paymentUrlResponse.paymentUrl);  
-        Alert.alert('Lỗi', 'URL thanh toán không hợp lệ.');
+        Alert.alert('Error', 'Invalid payment URL.');
         return;
       }
 
-      // Step 3: Show WebView with payment URL
       console.log('🔗 Opening VNPAY WebView with URL:', paymentUrlResponse.paymentUrl);
       
       setVnpayUrl(paymentUrlResponse.paymentUrl);
       setShowVNPayWebView(true);
       
-      // Set a timeout in case WebView gets stuck
       setTimeout(() => {
         if (showVNPayWebView) {
-          console.log('⏰ VNPAY WebView timeout reached');
+          console.log('VNPAY WebView timeout reached');
           Alert.alert(
             'Thời gian chờ quá lâu',
             'Trang thanh toán mở quá lâu. Bạn có muốn thử lại không?',
@@ -338,90 +381,76 @@ export default function CheckoutScreen() {
             ]
           );
         }
-      }, 30000); // 30 seconds timeout
-      
-      // console.log('=== VNPAY PAYMENT FLOW WEBVIEW OPENED ===');
+      }, 30000); 
       
     } catch (error) {
-      // console.error('=== VNPAY PAYMENT FLOW ERROR ===');    
-      // console.error('Error details:', error);
-      // console.error('Error message:', error.message);
-      // console.error('Error stack:', error.stack);
-      Alert.alert('Lỗi hệ thống', `Có lỗi xảy ra trong quá trình thanh toán: ${error.message}`);
+      Alert.alert('System error', `An error occurred during payment: ${error.message}`);
     }
   };
 
-  // Helper function để retry với exponential backoff
   const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000) => {
     for (let i = 0; i < maxRetries; i++) {
       try {
         return await fn();
       } catch (error) {
-        console.log(`❌ Attempt ${i + 1} failed:`, error.message);
+        console.log(`Attempt ${i + 1} failed:`, error.message);
         if (i === maxRetries - 1) throw error;
         
         const delay = baseDelay * Math.pow(2, i);
-        console.log(`⏳ Waiting ${delay}ms before retry...`);
+        console.log(`Waiting ${delay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   };
 
   const processVNPayCallbackWithRetry = async (params) => {
-    console.log('ℹ️ Processing VNPAY callback...');
+    console.log('Processing VNPAY callback...');
     
     try {
       const result = await orderService.processVNPayCallback(params);
       if (result.success) {
-        console.log('✅ VNPAY callback processed successfully');
+        console.log('VNPAY callback processed successfully');
         return result;
       } else {
-        console.log('ℹ️ Backend callback completed with note:', result.message);
+        console.log('Backend callback completed with note:', result.message);
         return { success: true, message: 'Payment processed successfully' };
       }
     } catch (error) {
-      console.log('ℹ️ Payment processed - backend sync will complete later');
+      console.log('Payment processed - backend sync will complete later');
       return { success: true, message: 'Payment confirmed' };
     }
   };
 
-  // Chỉ dùng Android emulator backend vì React Native không thể dùng localhost
   const alternativeBackends = [
-    'http://10.0.2.2:4000/api/', // Android emulator - chỉ URL này hoạt động
+    'http://10.0.2.2:4000/api/', 
   ];
 
   const handleVNPaySuccess = async (params) => {
     setShowVNPayWebView(false);
     
     try {
-      console.log('=== VNPAY SUCCESS HANDLER START ==='); 
-      console.log('📱 Mobile app received VNPAY success callback');
+      console.log('Mobile app received VNPAY success callback');
       console.log('VNPAY callback params:', JSON.stringify(params, null, 2));
       
-      // Check payment source
       const isManualVerification = params.source === 'manual_verification';
       const isUrlDetection = params.source === 'url_detection';
       
       console.log('Payment verification method:', params.source || 'callback');
       
-      // Chỉ kiểm tra response code, không validate signature ở client
       if (params.vnp_ResponseCode === '00') {
-        console.log('✅ VNPAY payment confirmed successful!');
+        console.log('VNPAY payment confirmed successful!');
         
         Toast.show({
           type: 'success',
-          text1: 'Thanh toán thành công!',
-          text2: isManualVerification ? 'Đang kiểm tra đơn hàng...' : 'Đang xử lý đơn hàng...',
+          text1: 'Payment successful!',
+          text2: isManualVerification ? 'Checking order...' : 'Processing order...',
         });
         
-        // For manual verification or URL detection, skip backend callback and just clear cart + show success
         if (isManualVerification || isUrlDetection) {
-          console.log('🎯 Using simplified success flow for', params.source);
+          console.log('Using simplified success flow for', params.source);
           
-          // Clear cart locally first
           await clearAllCart();
           
-          // Refresh cart from API
           setTimeout(async () => {
             try {
               await fetchCartFromAPI();
@@ -431,16 +460,22 @@ export default function CheckoutScreen() {
           }, 1000);
           
           Alert.alert(
-            'Thanh toán thành công!',
+            'Payment successful!',
             isManualVerification 
-              ? 'Cảm ơn bạn đã xác nhận. Đơn hàng đã được xử lý thành công.'
-              : 'Thanh toán VNPAY hoàn tất. Đơn hàng đã được tạo thành công.',
+              ? 'Thank you for confirming. The order has been processed successfully.'
+              : 'VNPAY payment completed. The order has been created successfully.',
             [
               {
-                text: 'Xem đơn hàng',
+                text: 'View order',
                 onPress: () => {
                   console.log('📱 User chose to view orders - navigating to OrderHistory');
-                  navigation.navigate('OrderHistory');
+                  navigation.reset({
+                    index: 1,
+                    routes: [
+                      { name: 'MainTabs', params: { screen: 'Home' } },
+                      { name: 'OrderHistory' }
+                    ],
+                  });
                 },
               },
               {
@@ -455,30 +490,25 @@ export default function CheckoutScreen() {
               },
             ]
           );
-          return; // Skip backend processing completely
+          return; 
         }
         
-        // Original callback processing flow
-        try {
-          // Process VNPAY callback với retry logic
-          console.log('📡 Calling backend to process VNPAY callback with enhanced retry...');
+        try { 
+          console.log('Calling backend to process VNPAY callback with enhanced retry...');
           const processResult = await processVNPayCallbackWithRetry(params);
           console.log('Backend process result:', processResult);
           
           if (processResult.success) {
-            console.log('✅ Backend processed VNPAY callback successfully');
+            console.log('Backend processed VNPAY callback successfully');
             
-            // Clear cart locally đầu tiên (để UI responsive)
-            console.log('🧹 Clearing cart locally...');
+            console.log('Clearing cart locally...');
             await clearAllCart();
-            console.log('✅ Cart cleared successfully');
+            console.log('Cart cleared successfully');
             
-            // Refresh cart để sync với backend
-            console.log('🔄 Refreshing cart to sync with backend...');
+            console.log('Refreshing cart to sync with backend...');
             await fetchCartFromAPI();
-            console.log('✅ Cart refreshed from API');  
+            console.log('Cart refreshed from API');  
             
-            // Show success
             Alert.alert(
               'Đặt hàng thành công!',
               'Thanh toán VNPAY và tạo đơn hàng đã hoàn tất. Đơn hàng đã xuất hiện trong lịch sử.',
@@ -487,7 +517,13 @@ export default function CheckoutScreen() {
                   text: 'Xem đơn hàng',
                   onPress: () => {
                     console.log('📱 User chose to view orders - navigating to OrderHistory');
-                    navigation.navigate('OrderHistory');
+                    navigation.reset({
+                      index: 1,
+                      routes: [
+                        { name: 'MainTabs', params: { screen: 'Home' } },
+                        { name: 'OrderHistory' }
+                      ],
+                    });
                   },
                 },
                 {
@@ -503,10 +539,8 @@ export default function CheckoutScreen() {
               ]
             );
           } else {
-            // Backend failed but payment was successful - use fallback flow
-            console.log('⚠️ Backend callback failed but payment was successful - using fallback');
+            console.log('Backend callback failed but payment was successful - using fallback');
             
-            // Clear cart and show success anyway
             await clearAllCart();
             
             Alert.alert(
@@ -515,7 +549,15 @@ export default function CheckoutScreen() {
               [
                 {
                   text: 'Xem đơn hàng',
-                  onPress: () => navigation.navigate('OrderHistory')
+                  onPress: () => {
+                    navigation.reset({
+                      index: 1,
+                      routes: [
+                        { name: 'MainTabs', params: { screen: 'Home' } },
+                        { name: 'OrderHistory' }
+                      ],
+                    });
+                  }
                 },
                 { text: 'Về trang chủ', onPress: () => navigation.reset({
                   index: 0,
@@ -525,10 +567,8 @@ export default function CheckoutScreen() {
             );
           }
         } catch (processError) {
-          // Emergency fallback: Payment successful but backend connection failed
-          console.log('ℹ️ Using emergency fallback - payment successful but connection issue');
+          console.log('Using emergency fallback - payment successful but connection issue');
           
-          // Clear cart and show success anyway since payment was confirmed
           await clearAllCart();
           
           Alert.alert(
@@ -537,7 +577,15 @@ export default function CheckoutScreen() {
             [
               {
                 text: 'Xem đơn hàng',
-                onPress: () => navigation.navigate('OrderHistory')
+                onPress: () => {
+                  navigation.reset({
+                    index: 1,
+                    routes: [
+                      { name: 'MainTabs', params: { screen: 'Home' } },
+                      { name: 'OrderHistory' }
+                    ],
+                  });
+                }
               },
               { text: 'Về trang chủ', onPress: () => navigation.reset({
                 index: 0,
@@ -548,9 +596,6 @@ export default function CheckoutScreen() {
         }
         
       } else {
-        // console.log('❌ VNPAY payment failed with code:', params.vnp_ResponseCode);
-        // console.log('Failed transaction details:', JSON.stringify(params, null, 2));
-        
         const errorMessages = {
           '24': 'Khách hàng hủy giao dịch',
           '51': 'Tài khoản không đủ số dư', 
@@ -563,20 +608,16 @@ export default function CheckoutScreen() {
         Alert.alert('Thanh toán thất bại', `${errorMessage} (Mã lỗi: ${params.vnp_ResponseCode})`);
       }
     } catch (error) {
-      console.error('❌ Error handling VNPAY success:', error);
+      console.error('Error handling VNPAY success:', error);
       Alert.alert('Lỗi', 'Có lỗi xảy ra khi xử lý kết quả thanh toán.');
     }
     
-    //
   };
 
 
 
   const handleVNPayError = async (params) => {
     setShowVNPayWebView(false);
-    
-    // console.log('=== VNPAY ERROR HANDLER ===');   
-    // console.log('VNPAY error params:', params);
     
     const responseCode = params.vnp_ResponseCode || '99';
     const errorMessages = {
@@ -594,27 +635,30 @@ export default function CheckoutScreen() {
   const handleOrderSuccess = async () => {
     Toast.show({
       type: 'success',
-      text1: 'Đặt hàng thành công!',
-      text2: 'Cảm ơn bạn đã đặt hàng. Chúng tôi sẽ liên hệ bạn sớm nhất.',
+      text1: 'Order placed successfully!',
+      text2: 'Thank you for your order. We will contact you soon.',
     });
 
-    // Clear cart after successful order
-    // console.log('Clearing cart after successful order...');
     const clearResult = await clearAllCart();
     if (clearResult.success) {
-      // console.log('Cart cleared successfully after order');
     } else {
-      // console.error('Failed to clear cart after order:', clearResult.message);
     }
 
-    // Navigate to order history or home
     Alert.alert(
       'Đặt hàng thành công!',
       'Cảm ơn bạn đã đặt hàng. Bạn có thể xem chi tiết đơn hàng trong lịch sử đơn hàng.',
       [
         {
           text: 'Xem đơn hàng',
-          onPress: () => navigation.navigate('OrderHistory'),
+          onPress: () => {
+            navigation.reset({
+              index: 1,
+              routes: [
+                { name: 'MainTabs', params: { screen: 'Home' } },
+                { name: 'OrderHistory' }
+              ],
+            });
+          },
         },
         {
           text: 'Về trang chủ',
@@ -631,7 +675,6 @@ export default function CheckoutScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={26} color="#222" />
@@ -643,32 +686,40 @@ export default function CheckoutScreen() {
       {loading && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.accent} />
+            <ActivityIndicator size="large" color="#007AFF" />
             <Text style={styles.loadingText}>Đang xử lý đơn hàng...</Text>
           </View>
         </View>
       )}
-
+      
       {userProfileLoading && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.accent} />
+            <ActivityIndicator size="large" color="#007AFF" />
             <Text style={styles.loadingText}>Đang tải thông tin cá nhân...</Text>
+          </View>
+        </View>
+      )}
+
+      {validatingProducts && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Đang kiểm tra sản phẩm...</Text>
           </View>
         </View>
       )}
 
       <FlatList
         ListHeaderComponent={
-          <>
-            {/* Thông tin cá nhân */}
+          <>  
             <Text style={styles.sectionTitle}>Full name *</Text>
             <TextInput 
               style={styles.input} 
               placeholder="Full name" 
               value={name} 
               onChangeText={setName}
-              editable={!loading && !userProfileLoading}
+              editable={!loading && !userProfileLoading && !validatingProducts}
             />
             <View style={{ flexDirection: 'row' }}>
               <View style={{ flex: 1, marginRight: 8 }}>
@@ -679,7 +730,7 @@ export default function CheckoutScreen() {
                   value={phone} 
                   onChangeText={setPhone} 
                   keyboardType="phone-pad"
-                  editable={!loading && !userProfileLoading}
+                  editable={!loading && !userProfileLoading && !validatingProducts}
                 />
               </View>
             </View>
@@ -689,7 +740,7 @@ export default function CheckoutScreen() {
               placeholder="Address" 
               value={address} 
               onChangeText={setAddress}
-              editable={!loading && !userProfileLoading}
+              editable={!loading && !userProfileLoading && !validatingProducts}
             />
             <Text style={styles.sectionTitle}>Note (optional)</Text>
             <TextInput 
@@ -698,17 +749,16 @@ export default function CheckoutScreen() {
               value={note} 
               onChangeText={setNote} 
               multiline
-              editable={!loading && !userProfileLoading}
+              editable={!loading && !userProfileLoading && !validatingProducts}
             />
-            {/* Phương thức thanh toán */}
             <Text style={styles.sectionTitle}>Payment method</Text>
             <View style={styles.paymentGroup}>
               {paymentMethods.map(m => (
                 <TouchableOpacity
                   key={m.key}
                   style={[styles.paymentOption, payment === m.key && styles.paymentOptionActive]}
-                  onPress={() => !loading && !userProfileLoading && setPayment(m.key)}
-                  disabled={loading || userProfileLoading}
+                  onPress={() => !loading && !userProfileLoading && !validatingProducts && setPayment(m.key)}
+                  disabled={loading || userProfileLoading || validatingProducts}
                 >
                   <Ionicons 
                     name={payment === m.key ? 'radio-button-on' : 'radio-button-off'} 
@@ -720,15 +770,14 @@ export default function CheckoutScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            {/* Phương thức vận chuyển */}
             <Text style={styles.sectionTitle}>Shipping method</Text>
             <View style={styles.shippingGroup}>
               {shippingMethods.map(m => (
                 <TouchableOpacity
                   key={m.key}
                   style={[styles.shippingOption, shippingMethod === m.key && styles.shippingOptionActive]}
-                  onPress={() => !loading && !userProfileLoading && setShippingMethod(m.key)}
-                  disabled={loading || userProfileLoading}
+                  onPress={() => !loading && !userProfileLoading && !validatingProducts && setShippingMethod(m.key)}
+                  disabled={loading || userProfileLoading || validatingProducts}
                 >
                   <Ionicons 
                     name={shippingMethod === m.key ? 'radio-button-on' : 'radio-button-off'} 
@@ -743,7 +792,6 @@ export default function CheckoutScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            {/* Tóm tắt đơn hàng */}
             <Text style={styles.sectionTitle}>Your order</Text>
           </>
         }
@@ -756,7 +804,7 @@ export default function CheckoutScreen() {
               style={styles.itemImage} 
               defaultSource={require('../../assets/product1.png')}
               onError={() => {
-                //  console.log('Error loading checkout image for:', item.name);
+                 console.log('Error loading checkout image for:', item.name);
               }}
             />
             <View style={{ flex: 1, marginLeft: 12 }}>
@@ -781,11 +829,11 @@ export default function CheckoutScreen() {
               <Text style={styles.summaryTotalValue}>{total.toLocaleString('vi-VN')} VND</Text>
             </View>
             <TouchableOpacity 
-              style={[styles.orderBtn, (loading || userProfileLoading || cartLoading) && styles.orderBtnDisabled]} 
+              style={[styles.orderBtn, (loading || userProfileLoading || cartLoading || validatingProducts) && styles.orderBtnDisabled]} 
               onPress={handleOrder}
-              disabled={loading || userProfileLoading || cartLoading}
+              disabled={loading || userProfileLoading || cartLoading || validatingProducts}
             >
-              {(loading || cartLoading) ? (
+              {(loading || cartLoading || validatingProducts) ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={styles.orderBtnText}>Confirm order</Text>
@@ -797,7 +845,6 @@ export default function CheckoutScreen() {
         }
       />
 
-      {/* VNPay WebView Modal */}
       <Modal
         visible={showVNPayWebView}
         animationType="slide"

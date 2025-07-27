@@ -3,11 +3,9 @@ import { Dimensions } from 'react-native';
 const { width, height } = Dimensions.get('window');
 
 export const dimensions = {
-  // Screen dimensions
   screenWidth: width,
   screenHeight: height,
 
-  // Spacing
   spacing: {
     extraSmall: 4,
     small: 8,
@@ -17,7 +15,6 @@ export const dimensions = {
     xxLarge: 32,
   },
 
-  // Border radius
   borderRadius: {
     small: 6,
     medium: 8,
@@ -26,7 +23,6 @@ export const dimensions = {
     round: 999,
   },
 
-  // Icon sizes
   icon: {
     small: 16,
     medium: 20,
@@ -34,29 +30,25 @@ export const dimensions = {
     extraLarge: 28,
   },
 
-  // Button heights
+  
   button: {
     small: 36,
     medium: 44,
     large: 48,
   },
 
-  // Header heights
   headerHeight: 60,
   tabBarHeight: 60,
 
-  // Product card dimensions
   productCardWidth: width * 0.42,
   productImageHeight: width * 0.35,
 
-  // Avatar sizes
   avatar: {
     small: 32,
     medium: 48,
     large: 64,
   },
 
-  // Legacy support (backward compatibility)
   paddingSmall: 8,
   paddingMedium: 12,
   paddingLarge: 16,

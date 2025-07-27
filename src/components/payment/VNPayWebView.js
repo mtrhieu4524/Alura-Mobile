@@ -27,16 +27,6 @@ const VNPayWebView = ({
   const webViewRef = useRef(null);
   const timeoutRef = useRef(null);
   const paymentTimeoutRef = useRef(null);
-
-  // Log component mount and props
-  // useEffect(() => {
-  //   console.log('=== VNPAY WEBVIEW MOUNTED ===');
-  //   console.log('Payment URL:', paymentUrl);
-  //   console.log('Return URL:', returnUrl);
-  //   console.log('URL is valid:', paymentUrl && paymentUrl.startsWith('http'));
-  // }, [paymentUrl, returnUrl]);
-
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {
@@ -50,16 +40,12 @@ const VNPayWebView = ({
     };
   }, []);
 
-  // Set payment timeout (5 minutes)
   useEffect(() => {
-    // Start polling after 2 minutes to check payment status
     const pollTimeoutId = setTimeout(() => {
       if (!callbackProcessed) {
         console.log('📊 Starting payment status polling...');
-        // You could implement a polling mechanism here to check payment status
-        // For now, we'll just show a helpful message
       }
-    }, 120000); // 2 minutes
+    }, 120000); 
 
     paymentTimeoutRef.current = setTimeout(() => {
       if (!callbackProcessed) {
@@ -82,7 +68,7 @@ const VNPayWebView = ({
           ]
         );
       }
-    }, 300000); // 5 minutes
+    }, 300000); 
 
     return () => {
       if (paymentTimeoutRef.current) {
@@ -94,37 +80,30 @@ const VNPayWebView = ({
     };
   }, [callbackProcessed, onError]);
 
-  // Kiểm tra có nên load URL không (để block localhost)
   const handleShouldStartLoad = (request) => {
-    // Kiểm tra request có tồn tại và có url property không
     if (!request || !request.url) {
       console.warn('Request object is missing or has no url property:', request);
-      return true; // Cho phép load nếu không có thông tin
+      return true; 
     }
     
     const { url } = request;
     console.log('=== SHOULD START LOAD ===');
     console.log('Request URL:', url);
     
-    // Special handling for VNPAY sandbox URLs
     if (url.includes('vnpayment.vn')) {
-      // Always allow VNPAY domain
       return true;
     }
     
-    // Kiểm tra nếu là VNPAY return URL với callback parameters
     if ((url.includes('localhost') || url.includes('127.0.0.1') || url.includes('10.0.2.2')) && 
         url.includes('vnp_ResponseCode=')) {
       
       console.log('🎯 Detected VNPAY return URL with callback params');
       
-      // Prevent duplicate processing
       if (callbackProcessed) {
         console.log('⚠️ Callback already processed, ignoring duplicate');
         return false;
       }
       
-      // Extract params from localhost URL
       try {
         const urlParams = parseUrlParams(url);
         console.log('VNPAY callback params from localhost URL:', urlParams);
@@ -133,7 +112,6 @@ const VNPayWebView = ({
           setCallbackProcessed(true);
           setProcessingVNPayReturn(true);
           
-          // Immediate callback
           if (urlParams.vnp_ResponseCode === '00') {
             console.log('✅ VNPAY payment successful - triggering success');
             onSuccess && onSuccess(urlParams);
@@ -142,30 +120,25 @@ const VNPayWebView = ({
             onError && onError(urlParams);
           }
           
-          // Block navigation to localhost
           return false;
         }
       } catch (parseError) {
         console.error('❌ Error parsing VNPAY URL params:', parseError);
       }
-      
-      // Block localhost navigation
+
       return false;
     }
     
-    // Block các localhost URLs khác (không phải VNPAY return)
     if (url.includes('localhost') || url.includes('127.0.0.1') || url.includes('10.0.2.2')) {
       console.log('🚫 Blocking non-VNPAY localhost navigation:', url);
       Alert.alert('Hoàn tất', 'Đang xử lý kết quả thanh toán...');
       return false;
     }
     
-    return true; // Allow các navigation khác
+    return true; 
   };
 
-  // Xử lý khi URL thay đổi
   const handleNavigationStateChange = (navState) => {
-    // Kiểm tra navState có tồn tại và có url property không
     if (!navState || !navState.url) {
       console.warn('Navigation state is missing or has no url property:', navState);
       return;
@@ -179,10 +152,6 @@ const VNPayWebView = ({
     
     setCanGoBack(navState.canGoBack || false);
 
-    // IMPORTANT: Don't auto-detect success to allow user to complete payment with PIN
-    // Only check for clear success/failure indicators
-    
-    // Check for explicit VNPAY error
     if (url.includes('vnp_ResponseCode=') && !url.includes('vnp_ResponseCode=00')) {
       console.log('❌ Detected failed payment in URL');
       const urlParams = parseUrlParams(url);
@@ -193,13 +162,10 @@ const VNPayWebView = ({
       }
     }
 
-    // Don't auto-trigger on Confirm page - let user complete payment first
     if (url.includes('vnpayment.vn') && url.includes('Confirm.html')) {
       console.log('🎯 User reached VNPAY Confirm page - waiting for user to complete payment');
-      // Don't auto-trigger success - user needs to enter PIN first
     }
 
-    // Skip xử lý nếu đây là VNPAY return URL - đã được xử lý trong handleShouldStartLoad
     if ((url.includes('localhost') || url.includes('127.0.0.1') || url.includes('10.0.2.2')) && 
         url.includes('payment/vnpay/return') && 
         url.includes('vnp_ResponseCode=')) {
@@ -208,7 +174,6 @@ const VNPayWebView = ({
     }
   };
 
-  // Parse URL parameters
   const parseUrlParams = (url) => {
     const params = {};
     
@@ -223,26 +188,26 @@ const VNPayWebView = ({
               params[decodeURIComponent(key)] = decodeURIComponent(value);
             } catch (decodeError) {
               console.warn('Failed to decode URL param:', key, value);
-              params[key] = value; // Fallback to raw value
+              params[key] = value; 
             }
           }
         });
       }
     } catch (error) {
-      // console.error('Error parsing URL params:', error);  
+
     }
     
     return params;
   };
 
-  // Xử lý khi load trang xong
+
   const handleLoadEnd = () => {
     setLoading(false);
   };
 
-  // Xử lý khi có lỗi
+
   const handleError = (syntheticEvent) => {
-    // Kiểm tra syntheticEvent có tồn tại và có nativeEvent property không
+
     if (!syntheticEvent || !syntheticEvent.nativeEvent) {
       console.warn('Synthetic event is missing or has no nativeEvent property:', syntheticEvent);
       Alert.alert('Lỗi', 'Có lỗi xảy ra khi tải trang thanh toán.');
@@ -250,55 +215,38 @@ const VNPayWebView = ({
     }
     
     const { nativeEvent } = syntheticEvent;
-    // console.error('=== VNPAY WEBVIEW ERROR ===');
-    // console.error('Error details:', nativeEvent);
-    // console.error('Payment URL:', paymentUrl);
-    // console.error('Error code:', nativeEvent.code);
-    // console.error('Error domain:', nativeEvent.domain); 
-    // console.error('Error description:', nativeEvent.description);
-    // console.error('Error URL:', nativeEvent.url);
     
-    // Special handling for localhost connection refused (VNPAY return URL)
+
     if (nativeEvent.code === -6 && 
         nativeEvent.description === 'net::ERR_CONNECTION_REFUSED' &&
         nativeEvent.url &&
         (nativeEvent.url.includes('localhost') || nativeEvent.url.includes('127.0.0.1')) &&
         nativeEvent.url.includes('vnp_ResponseCode=')) {
       
-      // console.log('🎯 VNPAY return URL connection refused - extracting callback params');
-      // console.log('This is expected behavior - mobile cannot access localhost backend');
-      
-      // Ẩn error page và hiển thị loading
       setProcessingVNPayReturn(true);
       
       try {
         const urlParams = parseUrlParams(nativeEvent.url);
-        // console.log('Extracted VNPAY params from failed URL:', urlParams);
         
         if (urlParams.vnp_ResponseCode) {
-          // Mark as processed to prevent duplicates
           setCallbackProcessed(true);
           
-          // Delay một chút để user không thấy error page
           setTimeout(() => {
             if (urlParams.vnp_ResponseCode === '00') {
-              //  console.log('✅ VNPAY payment successful (extracted from failed connection)');
               onSuccess && onSuccess(urlParams);
             } else {
-              // console.log('❌ VNPAY payment failed (extracted from failed connection)');
               onError && onError(urlParams);
             }
           }, 1000);
           return;
         }
       } catch (parseError) {
-        // console.error('Failed to parse VNPAY params from error URL:', parseError);  
+
       }
     }
     
     let errorMessage = 'Không thể tải trang thanh toán.';
     
-    // Handle specific error codes
     if (nativeEvent.code === -1009) {
       errorMessage = 'Không có kết nối Internet. Vui lòng kiểm tra kết nối mạng.';
     } else if (nativeEvent.code === -1001) {
@@ -321,7 +269,6 @@ const VNPayWebView = ({
     );
   };
 
-  // Xử lý nút back
   const handleGoBack = () => {
     if (canGoBack) {
       webViewRef.current?.goBack();
@@ -337,7 +284,7 @@ const VNPayWebView = ({
     }
   };
 
-  // Handle close button with confirmation
+
   const handleClose = () => {
     Alert.alert(
       'Hủy thanh toán',
@@ -347,7 +294,7 @@ const VNPayWebView = ({
         { 
           text: 'Kiểm tra trạng thái', 
           onPress: () => {
-            // Simulate checking payment status
+
             Alert.alert(
               'Kiểm tra trạng thái',
               'Nếu bạn đã hoàn thành thanh toán nhưng chưa thấy kết quả, vui lòng chờ thêm vài giây hoặc liên hệ hỗ trợ.',
@@ -363,7 +310,7 @@ const VNPayWebView = ({
     );
   };
 
-  // Validate payment URL
+
   if (!paymentUrl || !paymentUrl.startsWith('http')) {
     return (
       <SafeAreaView style={styles.container}>
@@ -388,7 +335,7 @@ const VNPayWebView = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
@@ -405,7 +352,7 @@ const VNPayWebView = ({
         </TouchableOpacity>
       </View>
 
-      {/* Help Button - Always visible */}
+
       <TouchableOpacity 
         style={styles.helpButton}
         onPress={() => {
@@ -428,7 +375,7 @@ const VNPayWebView = ({
         <Text style={styles.helpButtonText}>Hướng dẫn</Text>
       </TouchableOpacity>
 
-      {/* WebView */}
+
       <View style={styles.webViewContainer}>
         <WebView
           ref={webViewRef}
@@ -449,7 +396,7 @@ const VNPayWebView = ({
           scrollEnabled={true}
         />
         
-        {/* Loading indicator */}
+
         {loading && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -457,7 +404,7 @@ const VNPayWebView = ({
           </View>
         )}
         
-        {/* VNPAY Processing Overlay */}
+
         {processingVNPayReturn && (
           <View style={styles.vnpayProcessingOverlay}>
             <View style={styles.vnpayProcessingContainer}>
@@ -467,7 +414,7 @@ const VNPayWebView = ({
                 {callbackProcessed ? 'Đang hoàn tất...' : 'Nếu bạn đã thanh toán xong, vui lòng xác nhận bên dưới'}
               </Text>
               
-              {/* Manual verification option - show immediately */}
+
               {!callbackProcessed && (
                 <TouchableOpacity 
                   style={styles.manualVerifyButton}

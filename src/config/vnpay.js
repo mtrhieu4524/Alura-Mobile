@@ -1,16 +1,14 @@
-// VNPAY Configuration
 export const VNPAY_CONFIG = {
-  // Sandbox Environment (for testing)
-  TMN_CODE: 'C69VYS6A', // Thay bằng TMN Code thực tế từ VNPAY
-  HASH_SECRET: '2S67F6LJRUZS6XOHBDI6SRCGO2IDCMJ7', // Thay bằng Hash Secret thực tế từ VNPAY
+
+  TMN_CODE: 'C69VYS6A', 
+  HASH_SECRET: '2S67F6LJRUZS6XOHBDI6SRCGO2IDCMJ7', 
   URL: 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
   RETURN_URL: 'alura://vnpay-return',
   
-  // Production Environment (uncomment when going live)
-  // URL: 'https://vnpayment.vn/paymentv2/vpcpay.html',
+
 };
 
-// Response Codes
+
 export const VNPAY_RESPONSE_CODES = {
   SUCCESS: '00',
   PENDING: '01',

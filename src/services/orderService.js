@@ -2,12 +2,12 @@ import { getApiUrl } from '../config/environment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class OrderService {
-  // Helper function to get token
+
   async getToken() {
     return await AsyncStorage.getItem('token');
   }
 
-  // Place COD order using web format (matches web exactly)
+
   async placeCODOrder(orderData) {
     try {
       const token = await this.getToken();
@@ -57,7 +57,7 @@ class OrderService {
     }
   }
 
-  // Create new order (COD)
+
   async createOrder(orderData) {
     try {
       const token = await this.getToken();
@@ -69,7 +69,7 @@ class OrderService {
       console.log('=== CREATE ORDER DEBUG ===');
       console.log('Input order data:', JSON.stringify(orderData, null, 2));
 
-      // Transform mobile data to match web API format
+
       const transformedData = {
         shippingAddress: orderData.customerInfo.address,
         shippingMethod: orderData.shippingMethod,
@@ -79,19 +79,19 @@ class OrderService {
         selectedCartItemIds: orderData.items.map(item => item.productId)
       };
 
-      // Only add paymentMethod for COD orders - backend rejects non-COD payments
+
       if (orderData.paymentMethod === 'COD') {
         transformedData.paymentMethod = orderData.paymentMethod;
-        console.log('✅ COD order - adding paymentMethod field');
+        console.log('COD order - adding paymentMethod field');
       } else {
-        console.log('📱 VNPAY order - NOT sending paymentMethod field to avoid backend rejection');
+        console.log('VNPAY order - NOT sending paymentMethod field to avoid backend rejection');
       }
 
-      // Add VNPAY transaction data if exists (for logging/reference)
+
       if (orderData.vnpayData || orderData.vnpayTransactionData) {
         const vnpayData = orderData.vnpayData || orderData.vnpayTransactionData;
         transformedData.vnpayData = vnpayData;
-        console.log('💳 VNPAY transaction data included:', JSON.stringify(vnpayData, null, 2));
+        console.log('VNPAY transaction data included:', JSON.stringify(vnpayData, null, 2));
       }
 
       const apiUrl = getApiUrl('order/place');
@@ -111,7 +111,6 @@ class OrderService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        // console.error('❌ Order creation error response:', errorText);  
         
         let errorData;
         try {
@@ -120,12 +119,11 @@ class OrderService {
           errorData = { message: errorText };
         }
         
-        // console.error('❌ Parsed error data:', errorData);    
         throw new Error(errorData?.message || `HTTP ${response.status}: Failed to create order`);
       }
 
       const data = await response.json();
-      console.log('✅ Create order success response:', JSON.stringify(data, null, 2));
+      console.log('Create order success response:', JSON.stringify(data, null, 2));
 
       return {
         success: true,
@@ -134,8 +132,6 @@ class OrderService {
       };
       
     } catch (error) {
-          // console.error('❌ Error creating order:', error); 
-          // console.error('❌ Error stack:', error.stack); 
       return {
         success: false,
         message: error.message || 'Failed to create order'
@@ -143,7 +139,6 @@ class OrderService {
     }
   }
 
-  // Prepare VNPAY order
   async prepareVNPayOrder(orderData) {
     try {
       const token = await this.getToken();
@@ -152,14 +147,12 @@ class OrderService {
         throw new Error('Authentication required');
       }
 
-      // Transform mobile data to match web API format
       const prepareOrderData = {
         shippingAddress: orderData.shippingAddress || orderData.customerInfo?.address,
         shippingMethod: orderData.shippingMethod,
         promotionId: orderData.promotionId || null,
         note: orderData.note || '',
         phoneNumber: orderData.phoneNumber || orderData.customerInfo?.phone,
-        // Use selectedCartItemIds directly (web format) instead of mapping items
         selectedCartItemIds: orderData.selectedCartItemIds || []
       };
 
@@ -192,7 +185,6 @@ class OrderService {
       };
       
     } catch (error) {
-      // console.error('Error preparing VNPAY order:', error); 
       return {
         success: false,
         message: error.message || 'Failed to prepare order for VNPAY'
@@ -200,7 +192,6 @@ class OrderService {
     }
   }
 
-  // Create VNPAY payment URL
   async createVNPayPaymentUrl(paymentData) {
     try {
       const token = await this.getToken();
@@ -221,8 +212,7 @@ class OrderService {
         },
         body: JSON.stringify({
           ...paymentData,
-          bankCode: '', // Empty bank code for default behavior
-          // Add mobile platform identifier and return URL
+          bankCode: '', 
           platform: 'mobile',
           mobileReturnUrl: 'alura://vnpay-return',
           clientType: 'react-native'
@@ -233,7 +223,6 @@ class OrderService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        // console.error('VNPAY payment URL error response:', errorText);
         
         let errorData;
         try {
@@ -248,7 +237,6 @@ class OrderService {
       const data = await response.json();
       console.log('Create VNPAY payment URL response:', data);
 
-      // Validate response format
       if (!data.paymentUrl) {
         throw new Error('Payment URL not found in response');
       }
@@ -264,7 +252,6 @@ class OrderService {
       };
       
     } catch (error) {
-      // console.error('Error creating VNPAY payment URL:', error);
       return {
         success: false,
         message: error.message || 'Failed to create payment URL'
@@ -272,7 +259,6 @@ class OrderService {
     }
   }
 
-  // Verify VNPAY callback (optional - for additional validation)
   async verifyVNPayCallback(callbackParams) {
     try {
       const token = await this.getToken();
@@ -310,7 +296,6 @@ class OrderService {
       };
       
     } catch (error) {
-      // console.error('Error verifying VNPAY callback:', error);
       return {
         success: false,
         message: error.message || 'Failed to verify callback'
@@ -318,7 +303,6 @@ class OrderService {
     }
   }
 
-  // Process VNPAY callback manually (mobile app calls backend)
   async processVNPayCallback(vnpayParams) {
     try {
       console.log('=== PROCESS VNPAY CALLBACK START ===');
@@ -330,11 +314,9 @@ class OrderService {
         throw new Error('Authentication required');
       }
 
-      // Gọi backend API để process VNPAY callback  
       const baseApiUrl = getApiUrl('payment/vnpay/return');
       console.log('Base API URL:', baseApiUrl);
       
-      // Convert params to query string
       const queryString = Object.keys(vnpayParams)
         .map(key => `${key}=${encodeURIComponent(vnpayParams[key])}`)
         .join('&');
@@ -344,14 +326,13 @@ class OrderService {
       console.log('URL length:', fullApiUrl.length);
       console.log('VNPAY params being sent:', JSON.stringify(vnpayParams, null, 2));
       
-      // Add timeout controller
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.log('⏰ Request timeout - aborting...');
+        console.log('Request timeout - aborting...');
         controller.abort();
-      }, 15000); // 15 second timeout
+      }, 15000); 
       
-      console.log('🚀 Sending request to backend with authentication...');
+      console.log('Sending request to backend with authentication...');
       let response = await fetch(fullApiUrl, {
         method: 'GET',
         headers: {
@@ -362,9 +343,8 @@ class OrderService {
         signal: controller.signal,
       });
 
-      // If authentication fails, try without auth (some VNPAY endpoints don't need auth)
       if (response.status === 401 || response.status === 403) {
-        console.log('🔄 Authentication failed, trying without auth...');
+        console.log('Authentication failed, trying without auth...');
         
         const controllerNoAuth = new AbortController();
         const timeoutIdNoAuth = setTimeout(() => controllerNoAuth.abort(), 15000);
@@ -379,15 +359,14 @@ class OrderService {
         });
         
         clearTimeout(timeoutIdNoAuth);
-        console.log('📡 Request without auth completed, status:', response.status);
+        console.log('Request without auth completed, status:', response.status);
       }
 
       clearTimeout(timeoutId);
-      console.log('✅ Response received!');
+      console.log('Response received!');
       console.log('Process VNPAY callback response status:', response.status);
       console.log('Response headers:', JSON.stringify([...response.headers.entries()]));
 
-      // Handle response based on API documentation
       let responseText = '';
       try {
         responseText = await response.text();
@@ -398,32 +377,31 @@ class OrderService {
       console.log('Response body preview:', responseText.substring(0, 200));
 
       if (response.ok) {
-        console.log('✅ Backend processed VNPAY callback successfully');
+        console.log('Backend processed VNPAY callback successfully');
         return {
           success: true,
           message: 'VNPAY callback processed successfully',
           data: responseText
         };
       } else {
-        // Handle specific error codes from API documentation
         let errorMessage = '';
         
         switch (response.status) {
           case 400:
             errorMessage = 'VNPAY signature không hợp lệ hoặc authentication failed';
-            console.error('❌ VNPAY signature validation failed');
+            console.error('VNPAY signature validation failed');
             break;
           case 404:
             errorMessage = 'Không tìm thấy đơn hàng (TempOrder có thể đã hết hạn)';
-            console.error('❌ Order not found - TempOrder may have expired');
+            console.error('Order not found - TempOrder may have expired');
             break;
           case 500:
             errorMessage = 'Lỗi server khi xử lý thanh toán';
-            console.error('❌ Server error during payment processing');
+            console.error('Server error during payment processing');
             break;
           default:
             errorMessage = `Lỗi HTTP ${response.status}`;
-            console.error(`❌ Unexpected HTTP ${response.status}`);
+            console.error(`Unexpected HTTP ${response.status}`);
         }
         
         console.error('Backend response:', responseText);
@@ -431,12 +409,6 @@ class OrderService {
       }
       
     } catch (error) {
-      // console.error('=== PROCESS VNPAY CALLBACK ERROR ===');
-      // console.error('Error type:', error.name);
-      // console.error('Error message:', error.message);
-      // console.error('Error stack:', error.stack);
-      
-      // Better error messages
       let userMessage = error.message || 'Failed to process VNPAY callback';
       
       if (error.name === 'AbortError') {
@@ -452,7 +424,6 @@ class OrderService {
     }
   }
 
-  // Get order history
   async getOrderHistory(params = {}) {
     try {
       const token = await this.getToken();
@@ -461,19 +432,16 @@ class OrderService {
         throw new Error('Authentication required');
       }
 
-      // Get user ID from AsyncStorage (same as web uses from Redux/localStorage)
       const userId = await AsyncStorage.getItem('user');
       if (!userId) {
         throw new Error('User ID not found');
       }
 
-      // Debug: Log user ID format
       console.log('=== ORDER HISTORY DEBUG ===');
       console.log('Mobile app user ID:', userId);
       console.log('User ID type:', typeof userId);
       console.log('User ID length:', userId.length);
 
-      // Use the same endpoint as web: /order/by-user/${userId}
       const apiUrl = `${getApiUrl('order/by-user')}/${userId}`;
       console.log('Order history API URL:', apiUrl);
       
@@ -491,13 +459,12 @@ class OrderService {
         const errorText = await response.text();
         console.log('Order history error:', errorText);
         
-        // Debug: Kiểm tra nếu là 404 (user not found) vs 500 (server error)
         if (response.status === 404) {
-          console.log('❌ User ID not found in backend - check user ID format');
+          console.log('User ID not found in backend - check user ID format');
         } else if (response.status === 401) {
-          console.log('❌ Authentication failed - check token');
+          console.log('Authentication failed - check token');
         } else {
-          console.log('❌ Server error:', response.status);
+          console.log('Server error:', response.status);
         }
         
         throw new Error('Failed to fetch order history');
@@ -513,28 +480,25 @@ class OrderService {
       console.log('Raw API response:', JSON.stringify(data, null, 2));
       console.log('Number of orders returned:', Array.isArray(data) ? data.length : 'Not array');
 
-      // Debug: Check if we have any orders
       if (Array.isArray(data) && data.length === 0) {
-        console.log('⚠️ No orders found for user:', userId);
+        console.log('No orders found for user:', userId);
         console.log('This could mean:');
         console.log('1. User has no orders yet');
         console.log('2. VNPAY orders are not being created by backend callback');
         console.log('3. User ID format mismatch between mobile/backend');
       }
 
-      // Transform API data to app format (same as web format)
       const transformedOrders = data.map(order => ({
         orderId: order._id,
-        orderNumber: order._id, // Use same ID for orderNumber
+        orderNumber: order._id, 
         date: order.orderDate,
         totalPrice: order.totalAmount,
         status: this.mapOrderStatus(order.paymentStatus || order.orderStatus || "Unknown"),
-        items: [], // Will be populated in detail view
+        items: [], 
         customerInfo: order.customerInfo || {},
         paymentMethod: order.paymentMethod || 'cod',
         shippingFee: order.shippingFee || 0,
         note: order.note || '',
-        // Keep original data for reference
         _original: order
       }));
 
@@ -562,7 +526,6 @@ class OrderService {
     }
   }
 
-  // Fetch product detail (same as web implementation)
   async fetchProductDetail(productId) {
     try {
       const apiUrl = `${getApiUrl('products')}/${productId}`;
@@ -602,7 +565,6 @@ class OrderService {
     }
   }
 
-  // Get order detail by ID
   async getOrderDetail(orderId) {
     try {
       const token = await this.getToken();
@@ -611,7 +573,6 @@ class OrderService {
         throw new Error('Authentication required');
       }
 
-      // Use same endpoint as web: /order/by-order/${orderNumber}
       const apiUrl = `${getApiUrl('order/by-order')}/${orderId}`;
       console.log('Order detail API URL:', apiUrl);
       
@@ -638,8 +599,15 @@ class OrderService {
 
       const data = await response.json();
       console.log('Order detail response:', data);
+      console.log('=== DEBUG ORDER PHONE NUMBER ===');
+      console.log('data.phoneNumber:', data.phoneNumber);
+      console.log('data.phone:', data.phone);
+      console.log('data.customerPhone:', data.customerPhone);
+      console.log('data.customerInfo?.phone:', data.customerInfo?.phone);
+      console.log('data.shippingInfo?.phone:', data.shippingInfo?.phone);
+      console.log('data.contactPhone:', data.contactPhone);
+      console.log('data.userId?.phone:', data.userId?.phone);
 
-      // Fetch product details for each item (same as web)
       const itemsWithDetails = await Promise.all((data.items || []).map(async (item) => {
         const productDetails = await this.fetchProductDetail(item.productId);
         return {
@@ -650,14 +618,12 @@ class OrderService {
           price: item.unitPrice || item.price || 0,
           image: item.productImgUrl || null,
           lineTotal: (item.unitPrice || item.price || 0) * item.quantity,
-          // Product details fetched from API
           type: productDetails.type,
           skinType: productDetails.skinType,
           volume: productDetails.volume
         };
       }));
 
-      // Transform API data to app format with structure matching web
       const transformedOrder = {
         orderId: data._id,
         orderNumber: data._id,
@@ -666,10 +632,10 @@ class OrderService {
         status: this.mapOrderStatus(data.paymentStatus || data.orderStatus || "Unknown"),
         items: itemsWithDetails,
         customerInfo: {
-          name: data.userId?.name || data.customerName || 'Unknown',
-          phone: data.phoneNumber || data.phone || 'N/A',
-          address: data.shippingAddress || data.address || 'N/A',
-          email: data.userId?.email || data.customerEmail || ''
+          name: data.userId?.name || data.customerName || data.customerInfo?.name || 'Unknown',
+          phone: data.phoneNumber || data.phone || data.customerPhone || data.customerInfo?.phone || data.shippingInfo?.phone || data.contactPhone || data.userId?.phone || 'N/A',
+          address: data.shippingAddress || data.address || data.customerInfo?.address || data.shippingInfo?.address || 'N/A',
+          email: data.userId?.email || data.customerEmail || data.customerInfo?.email || ''
         },
         paymentMethod: data.paymentMethod || 'cod',
         shippingFee: data.shippingFee || 0,
@@ -678,9 +644,12 @@ class OrderService {
         trackingNumber: data.trackingNumber,
         estimatedDelivery: data.estimatedDelivery,
         statusHistory: data.statusHistory || [],
-        // Keep original data for reference
         _original: data
       };
+
+      console.log('=== FINAL CUSTOMER INFO ===');
+      console.log('customerInfo:', transformedOrder.customerInfo);
+      console.log('phone value:', transformedOrder.customerInfo.phone);
 
       return {
         success: true,
@@ -698,7 +667,6 @@ class OrderService {
     }
   }
 
-  // Cancel order
   async cancelOrder(orderId) {
     try {
       const token = await this.getToken();
@@ -740,7 +708,6 @@ class OrderService {
     }
   }
 
-  // Transform order data from API to app format
   transformOrder(apiOrder) {
     return {
       orderId: apiOrder._id || apiOrder.orderId,
@@ -765,23 +732,19 @@ class OrderService {
       paymentMethod: apiOrder.paymentMethod,
       shippingFee: apiOrder.shippingFee || 0,
       note: apiOrder.note || '',
-      // Keep original data for reference
       _original: apiOrder
     };
   }
 
-  // Transform order detail data from API to app format
   transformOrderDetail(apiOrder) {
     const baseOrder = this.transformOrder(apiOrder);
     
     return {
       ...baseOrder,
-      // Additional detail fields
       orderNumber: apiOrder.orderNumber || apiOrder._id,
       trackingNumber: apiOrder.trackingNumber,
       estimatedDelivery: apiOrder.estimatedDelivery,
       statusHistory: apiOrder.statusHistory || [],
-      // Detailed customer info
       customerInfo: {
         ...baseOrder.customerInfo,
         email: apiOrder.customerInfo?.email || apiOrder.customerEmail
@@ -789,7 +752,6 @@ class OrderService {
     };
   }
 
-  // Map API status to app status
   mapOrderStatus(apiStatus) {
     const statusMap = {
       'pending': 'Pending',
@@ -797,7 +759,7 @@ class OrderService {
       'shipped': 'Shipped', 
       'delivered': 'Delivered',
       'success': 'Success',
-      'completed': 'Success', // Map completed to Success like web
+      'completed': 'Success', 
       'cancelled': 'Cancelled',
       'refunded': 'Cancelled'
     };

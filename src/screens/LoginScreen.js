@@ -16,40 +16,38 @@ export default function LoginScreen() {
   const navigation = useNavigation();
   const { login, getRememberedCredentials } = useAuth();
 
-  // Load remembered credentials on component mount
-  // useEffect(() => {
-  //   loadRememberedCredentials();
-  // }, []);
+  useEffect(() => {
+    loadRememberedCredentials();
+  }, []);
 
-  // const loadRememberedCredentials = async () => {
-  //   try {
-  //     const credentials = await getRememberedCredentials();
-  //     if (credentials) {
-  //       setEmail(credentials.email);
-  //       setPassword(credentials.password);
-  //       // setRememberMe(true);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error loading remembered credentials:', error);
-  //   }
-  // };
+  const loadRememberedCredentials = async () => {
+    try {
+      const credentials = await getRememberedCredentials();
+      if (credentials) {
+        setEmail(credentials.email);
+        setPassword(credentials.password);
+        setRememberMe(true);
+      }
+    } catch (error) {
+      console.error('Error loading remembered credentials:', error);
+    }
+  };
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter both email and password!');
+      Alert.alert('Lỗi', 'Vui lòng nhập email và mật khẩu!');
       return;
     }
 
     setLoading(true);
     try {
-      const result = await login(email.trim(), password);
+      const result = await login(email.trim(), password, rememberMe);
       
       if (result.success) {
         navigation.replace('MainTabs');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -59,19 +57,16 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Ảnh nền tràn toàn màn hình */}
       <Image 
         source={require('../../assets/login-bg.png')} 
         style={styles.backgroundImage} 
         resizeMode="cover" 
       />
       
-      {/* Form đăng nhập */}
       <View style={styles.formContainer}>
         <Text style={styles.title}>Hello!</Text>
         <Text style={styles.subtitle}>Welcome back</Text>
         
-        {/* Email */}
         <View style={styles.inputWrapper}>
           <Ionicons name="mail-outline" size={20} color="#888" style={styles.inputIcon} />
           <TextInput
@@ -86,7 +81,6 @@ export default function LoginScreen() {
           />
         </View>
 
-        {/* Password */}
         <View style={styles.inputWrapper}>
           <Ionicons name="lock-closed-outline" size={20} color="#888" style={styles.inputIcon} />
           <TextInput
@@ -103,7 +97,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Remember Me */}
         <View style={styles.rememberForgotRow}>
           <TouchableOpacity 
             style={styles.rememberContainer}
@@ -116,13 +109,11 @@ export default function LoginScreen() {
             <Text style={styles.rememberText}>Remember me</Text>
           </TouchableOpacity>
           
-          {/* Quên mật khẩu */}
           <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} disabled={loading}>
             <Text style={styles.forgotText}>Forgot password?</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Nút đăng nhập */}
         <TouchableOpacity 
           style={[styles.signInBtn, loading && styles.signInBtnDisabled]} 
           onPress={handleSignIn}
@@ -137,21 +128,6 @@ export default function LoginScreen() {
           )}
         </TouchableOpacity>
 
-        {/* OR CONTINUE WITH */}
-        {/* <Text style={styles.orText}>OR CONTINUE WITH</Text>
-        <View style={styles.socialRow}>
-          <TouchableOpacity style={styles.socialBtn} disabled={loading}>
-            <FontAwesome name="google" size={24} color="#EA4335" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.socialBtn} disabled={loading}>
-            <FontAwesome name="facebook" size={24} color="#1877F3" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.socialBtn} disabled={loading}>
-            <FontAwesome name="apple" size={24} color="#000" />
-          </TouchableOpacity>
-        </View> */}
-
-        {/* Đăng ký */}
         <View style={styles.signupRow}>
           <Text style={styles.signupText}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('SignUp')} disabled={loading}>
@@ -159,7 +135,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Guest Login */}
         <TouchableOpacity style={styles.guestBtn} onPress={handleGuestLogin} disabled={loading}>
           <Text style={styles.guestText}>Continue as Guest</Text>
         </TouchableOpacity>
@@ -179,12 +154,12 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     width: width,
-    height: height * 0.5, // Tăng chiều cao lên 50% thay vì 35%
+    height: height * 0.5, 
     zIndex: 1,
   },
   formContainer: {
     flex: 1,
-    marginTop: height * 0.35, // Giữ nguyên vị trí form
+    marginTop: height * 0.35, 
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

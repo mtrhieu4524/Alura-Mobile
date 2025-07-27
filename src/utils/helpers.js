@@ -1,16 +1,16 @@
 /**
- * Format currency in Vietnamese format
- * @param {number} amount - Amount to format
- * @returns {string} Formatted currency string
+ 
+ * @param {number} amount 
+ * @returns {string} 
  */
 export const formatCurrency = (amount) => {
   return `${amount.toLocaleString('vi-VN')} VND`;
 };
 
 /**
- * Validate email format
- * @param {string} email - Email to validate
- * @returns {boolean} True if valid email
+
+ * @param {string} email 
+ * @returns {boolean} 
  */
 export const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -18,9 +18,9 @@ export const validateEmail = (email) => {
 };
 
 /**
- * Validate phone number (Vietnamese format)
- * @param {string} phone - Phone number to validate
- * @returns {boolean} True if valid phone number
+
+ * @param {string} phone 
+ * @returns {boolean} 
  */
 export const validatePhone = (phone) => {
   const phoneRegex = /^(0|\+84)[0-9]{9,10}$/;
@@ -28,28 +28,28 @@ export const validatePhone = (phone) => {
 };
 
 /**
- * Calculate discount amount
- * @param {number} originalPrice - Original price
- * @param {number} discountPercent - Discount percentage
- * @returns {number} Discount amount
+
+ * @param {number} originalPrice 
+ * @param {number} discountPercent 
+ * @returns {number} 
  */
 export const calculateDiscount = (originalPrice, discountPercent) => {
   return (originalPrice * discountPercent) / 100;
 };
 
 /**
- * Generate random ID
- * @returns {string} Random ID
+
+ * @returns {string} 
  */
 export const generateId = () => {
   return Math.random().toString(36).substr(2, 9);
 };
 
 /**
- * Debounce function
- * @param {Function} func - Function to debounce
- * @param {number} wait - Wait time in milliseconds
- * @returns {Function} Debounced function
+
+ * @param {Function} func 
+ * @param {number} wait 
+ * @returns {Function} 
  */
 export const debounce = (func, wait) => {
   let timeout;

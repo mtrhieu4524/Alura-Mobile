@@ -1,5 +1,5 @@
 export const typography = {
-  // Nested structure for modern usage
+
   sizes: {
     extraSmall: 10,
     small: 12,
@@ -38,7 +38,7 @@ export const typography = {
     wider: 1,
   },
 
-  // Legacy support (backward compatibility)
+
   fontSizeSmall: 12,
   fontSizeMedium: 14,
   fontSizeNormal: 15,

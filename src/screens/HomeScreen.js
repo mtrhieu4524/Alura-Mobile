@@ -9,58 +9,50 @@ import { productService } from '../services';
 
 const { width } = Dimensions.get('window');
 
-// Mock categories
+
 const categories = [
-  { id: 'skincare', name: 'Skincare', image: require('../../assets/skincare.png') },
-  { id: 'makeup', name: 'Makeup', image: require('../../assets/facialcosmetics.png') },
-  { id: 'fragrance', name: 'Fragrance', image: require('../../assets/purefragrance.png') },
-  { id: 'haircare', name: 'Haircare', image: require('../../assets/cat4.png') },
+  { id: 'lipstick', name: 'Lipstick', image: require('../../assets/cate1.png'), category: 'cosmetics' },
+  { id: 'toner', name: 'Toner', image: require('../../assets/cate2.webp'), category: 'treatments' },
+  { id: 'cleanser', name: 'Cleanser', image: require('../../assets/cate3.png'), category: 'treatments' },
+  { id: 'serum', name: 'Serum', image: require('../../assets/cate4.png'), category: 'treatments' },
 ];
 
 export default function HomeScreen() {
   const navigation = useNavigation();
 
-  // State for products
   const [bestSellers, setBestSellers] = useState([]);
   const [newArrivals, setNewArrivals] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch products for different sections
   useEffect(() => {
     const fetchHomeProducts = async () => {
       try {
         setLoading(true);
 
-        // Fetch all products and then filter/sort them locally
         const response = await productService.getAllProducts({
           pageIndex: 1,
           pageSize: 20
         });
 
         if (response.success) {
-          // Transform products
           const transformedProducts = response.products.map(apiProduct => 
             productService.transformProduct(apiProduct)
           );
 
-          // Best Sellers (high rating products)
           const bestSellersList = transformedProducts
             .filter(product => product.rating >= 4.5)
             .sort((a, b) => b.rating - a.rating)
             .slice(0, 6);
 
-          // New Arrivals (recently created products)
           const newArrivalsList = transformedProducts
             .filter(product => product.isNew)
             .sort((a, b) => new Date(b._original?.createdAt || 0) - new Date(a._original?.createdAt || 0))
             .slice(0, 6);
 
-          // Featured Products (mix of bestsellers and new products)
           const featuredList = transformedProducts
             .filter(product => product.isBestseller || product.isNew)
             .sort((a, b) => {
-              // Prioritize bestsellers and new products
               if (a.isBestseller && !b.isBestseller) return -1;
               if (!a.isBestseller && b.isBestseller) return 1;
               if (a.isNew && !b.isNew) return -1;
@@ -89,7 +81,6 @@ export default function HomeScreen() {
     fetchHomeProducts();
   }, []);
 
-  // Handle product press
   const handleProductPress = (product) => {
     navigation.navigate('ProductDetail', { 
       product,
@@ -97,15 +88,32 @@ export default function HomeScreen() {
     });
   };
 
-  // Handle category press
   const handleCategoryPress = (category) => {
-    navigation.navigate('Shop', { 
-      selectedCategory: category.id,
-      categoryName: category.name 
-    });
+    console.log('🎯 Category pressed:', category);
+
+    if (category.category === 'cosmetics') {
+      const params = {
+        category: 'cosmetics',
+        state: { type: category.name } 
+      };
+      console.log('🚀 Navigating to cosmetics with params:', params);
+      navigation.navigate('MainTabs', {
+        screen: 'Shop',
+        params: params
+      });
+    } else {
+      const params = {
+        category: 'treatments',
+        state: { type: category.name } 
+      };
+      console.log('🚀 Navigating to treatments with params:', params);
+      navigation.navigate('MainTabs', {
+        screen: 'Shop',
+        params: params
+      });
+    }
   };
 
-  // Handle see all press
   const handleSeeAllPress = (type) => {
     let params = {};
     
@@ -126,7 +134,6 @@ export default function HomeScreen() {
     navigation.navigate('Shop', params);
   };
 
-  // Render product item for horizontal lists
   const renderProductItem = ({ item }) => (
     <View style={styles.productItemWrapper}>
       <ProductCard 
@@ -137,7 +144,6 @@ export default function HomeScreen() {
     </View>
   );
 
-  // Render category item
   const renderCategoryItem = (cat) => (
     <TouchableOpacity 
       key={cat.id} 
@@ -150,7 +156,6 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-  // Render product section
   const renderProductSection = (title, products, seeAllType) => {
     if (!products || products.length === 0) {
       return null;
@@ -161,14 +166,14 @@ export default function HomeScreen() {
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>{title}</Text>
           <TouchableOpacity onPress={() => handleSeeAllPress(seeAllType)}>
-            <Text style={styles.seeAll}>Xem tất cả</Text>
+            <Text style={styles.seeAll}>see all</Text>
           </TouchableOpacity>
         </View>
         
         <FlatList
           data={products}
           renderItem={renderProductItem}
-          keyExtractor={item => item.id}
+          keyExtractor={(item, index) => item.id || item._id || `product-${index}`}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.productsHorizontalList}
@@ -179,19 +184,13 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.headerWrapper}>
         <View style={{ flex: 1 }} />
         <View style={styles.headerCenter}>
           <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity 
-            style={{ marginRight: 16 }}
-            onPress={() => navigation.navigate('Profile')}
-          >
-            <Ionicons name="notifications-outline" size={24} color={colors.text} />
-          </TouchableOpacity>
+
         </View>
       </View>
 
@@ -200,32 +199,27 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Banner Slider */}
         <BannerSlider />
 
-        {/* Service Features */}
         <ServiceFeatures />
 
-        {/* Featured Categories */}
         <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Danh mục nổi bật</Text>
+          <Text style={styles.sectionTitle}>featured category</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Shop')}>
-            <Text style={styles.seeAll}>Xem tất cả</Text>
+            <Text style={styles.seeAll}>see all</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.categoriesGrid}>
           {categories.map(renderCategoryItem)}
         </View>
 
-        {/* Loading State */}
         {loading && (
           <View style={styles.loadingSection}>
             <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={styles.loadingText}>Đang tải sản phẩm...</Text>
+            <Text style={styles.loadingText}>loading products...</Text>
           </View>
         )}
 
-        {/* Product Sections */}
         {!loading && (
           <>
             {renderProductSection('Best Sellers', bestSellers, 'bestsellers')}
@@ -251,7 +245,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
-    paddingBottom: 120, // Space for floating tab bar
+    paddingBottom: 120, 
   },
   headerWrapper: {
     flexDirection: 'row',
@@ -310,7 +304,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 14,
     overflow: 'hidden',
-    justifyContent: 'flex-end',
+    justifyContent: 'center', 
+    alignItems: 'center', 
   },
   categoryImage: {
     ...StyleSheet.absoluteFillObject,
@@ -325,8 +320,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 18,
-    alignSelf: 'center',
-    marginBottom: 16,
+    textAlign: 'center', 
     zIndex: 2,
   },
   productSection: {
